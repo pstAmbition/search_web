@@ -4,7 +4,7 @@ import os
 import time
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
-from services import nebula_service, search_service
+from services import nebula_service, search_service, mongodb_service
 import utils
 
 # 创建一个Blueprint
@@ -235,3 +235,212 @@ def upload_file():
         "filename": filename,
         "url": file_url
     }), 200
+
+# 北理工 风险事件库
+# 添加新的API路由来支持更多MongoDB功能
+@api.route('/getAllEvents', methods=['GET'])
+def get_all_events():
+    """获取所有事件，支持分页、排序和按平台、region、Time和关键字过滤"""
+    try:
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 10))
+        sort_by = request.args.get('sort_by', 'Time')
+        sort_order = int(request.args.get('sort_order', -1))
+        platform = request.args.get('platform', '')
+        region = request.args.get('region', '')
+        start_time = request.args.get('start_time', '')
+        end_time = request.args.get('end_time', '')
+        keyword = request.args.get('keyword', '')
+    except ValueError:
+        return jsonify({"error": "分页和排序参数格式错误"}), 400
+    
+    # 构建查询参数
+    params = {
+        'platform': platform,
+        'region': region,
+        'start_time': start_time,
+        'end_time': end_time,
+        'keyword': keyword
+    }
+    
+    # 调用mongodb_service中的函数获取查询条件
+    query = mongodb_service.get_all_events_query(params)
+    
+    events, total = mongodb_service.search_events(query, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
+    
+    if isinstance(events, dict) and "error" in events:
+        return jsonify(events), 500
+    
+    return jsonify({
+        "results": events,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": (total + page_size - 1) // page_size
+    })
+
+@api.route('/getRiskEvents', methods=['GET'])
+def get_risk_events():
+    """获取所有isRisk=true的风险事件，支持分页、排序和按region、Time和关键字过滤"""
+    try:
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 10))
+        sort_by = request.args.get('sort_by', 'Time')
+        sort_order = int(request.args.get('sort_order', -1))
+        region = request.args.get('region', '')
+        start_time = request.args.get('start_time', '')
+        end_time = request.args.get('end_time', '')
+        keyword = request.args.get('keyword', '')
+    except ValueError:
+        return jsonify({"error": "分页和排序参数格式错误"}), 400
+    
+    # 构建查询参数
+    params = {
+        'region': region,
+        'start_time': start_time,
+        'end_time': end_time,
+        'keyword': keyword
+    }
+    
+    # 调用mongodb_service中的函数获取查询条件
+    query = mongodb_service.get_risk_events_query(params)
+    
+    events, total = mongodb_service.search_events(query, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
+    
+    if isinstance(events, dict) and "error" in events:
+        return jsonify(events), 500
+    
+    return jsonify({
+        "results": events,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": (total + page_size - 1) // page_size
+    })
+
+@api.route('/getDatabaseStats', methods=['GET'])
+def get_database_stats():
+    """获取数据库统计信息"""
+    
+    stats = mongodb_service.get_statistics()
+    
+    if isinstance(stats, dict) and "error" in stats:
+        return jsonify(stats), 500
+    
+    return jsonify(stats)
+
+@api.route('/exportEvents', methods=['GET'])
+def export_events():
+    """导出事件数据，支持按条件筛选"""
+    try:
+        # 获取查询参数
+        keyword = request.args.get('keyword', '')
+        region = request.args.get('region', '')
+        start_time = request.args.get('start_time', '')
+        end_time = request.args.get('end_time', '')
+        is_risk = request.args.get('is_risk', '')
+        platform = request.args.get('platform', '')
+        export_format = request.args.get('format', 'json')  # 导出格式：json 或 jsonl
+        
+        # 构建查询条件
+        query = {}
+        conditions = []
+        
+        if keyword:
+            conditions.append({
+                "$or": [
+                    {"Event": {"$regex": keyword, "$options": "i"}},
+                    {"Content": {"$regex": keyword, "$options": "i"}}
+                ]
+            })
+        
+        if region:
+            conditions.append({"region": region})
+        
+        # 处理时间范围查询，支持按年月筛选 (格式：YYYY-MM)
+        if start_time:
+            if len(start_time) == 7 and start_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月第一天
+                conditions.append({"Time": {"$gte": f"{start_time}-01 00:00"}})
+            else:
+                conditions.append({"Time": {"$gte": start_time}})
+        
+        if end_time:
+            if len(end_time) == 7 and end_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月最后一天
+                year, month = map(int, end_time.split('-'))
+                last_day = calendar.monthrange(year, month)[1]
+                conditions.append({"Time": {"$lte": f"{year}-{month:02d}-{last_day} 23:59"}})
+            else:
+                conditions.append({"Time": {"$lte": end_time}})
+        
+        if is_risk:
+            conditions.append({"isRisk": is_risk})
+        
+        if platform:
+            conditions.append({"platform": platform})
+        
+        # 组合查询条件
+        if len(conditions) > 0:
+            if len(conditions) > 1:
+                query = {"$and": conditions}
+            else:
+                query = conditions[0]
+        
+        # 导出所有匹配的事件（不分页）
+        events, total = mongodb_service.search_events(query, page=1, page_size=100000)
+        
+        if isinstance(events, dict) and "error" in events:
+            return jsonify(events), 500
+        
+        # 根据导出格式返回不同的响应
+        if export_format.lower() == 'jsonl':
+            # 生成JSONL格式的响应
+            jsonl_content = ''
+            for event in events:
+                # 确保event是可JSON序列化的
+                if isinstance(event, dict):
+                    jsonl_content += json.dumps(event, ensure_ascii=False) + '\n'
+                else:
+                    # 如果event不是dict，尝试转换
+                    try:
+                        jsonl_content += json.dumps(dict(event), ensure_ascii=False) + '\n'
+                    except:
+                        # 忽略无法序列化的条目
+                        continue
+            
+            # 创建响应对象，设置适当的头部
+            response = make_response(jsonl_content)
+            response.headers['Content-Type'] = 'application/jsonl'
+            response.headers['Content-Disposition'] = 'attachment; filename="events_export.jsonl"'
+            response.headers['X-Total-Records'] = str(total)
+            return response
+        else:
+            # 默认返回JSON格式
+            return jsonify({
+                "results": events,
+                "total": total,
+                "export_time": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+    except Exception as e:
+        current_app.logger.error(f"Export events error: {str(e)}")
+        return jsonify({"error": str(e)}), 500    
+
+@api.route('/getDashboardMetrics', methods=['GET'])
+def get_dashboard_metrics():
+    """
+    获取仪表盘指标数据
+    """
+    try:
+        # 调用mongodb_service中的函数获取仪表盘指标
+        metrics = mongodb_service.get_dashboard_metrics()
+        
+        if isinstance(metrics, dict) and "error" in metrics:
+            return jsonify(metrics), 500
+        
+        return jsonify(metrics)
+        
+    except Exception as e:
+        current_app.logger.error(f"获取仪表盘指标错误: {str(e)}")
+        return jsonify({"error": str(e)}), 500

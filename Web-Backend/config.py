@@ -44,3 +44,11 @@ class Config:
     # Towhee Video Search 配置
     TOWHEE_LEVELDB_PATH = '/data/storage/8888/sunye/video_search2.db' # 重要：请替换为您的真实路径
     TOWHEE_DEVICE = 0 # 使用GPU 0, 如果没有GPU请设置为None
+
+    # MongoDB 配置
+    MONGO_HOST = '127.0.0.1'
+    MONGO_PORT = 27017
+    MONGO_USER = '' # 示例认证，请替换为您的真实认证信息
+    MONGO_PASSWORD = ''
+    MONGO_DBNAME = 'admin'
+    MONGO_COLLECTION = 'event'
