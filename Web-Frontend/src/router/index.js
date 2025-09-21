@@ -5,6 +5,7 @@ import EventView from '../views/trace/EventView.vue'
 import RiskView from '../views/fake-know/RiskView.vue'
 import FakeView from '../views/fake-know/FakeView.vue'
 import BadView from '../views/fake-know/BadView.vue'
+import DashboardView from '../views/dashboard/DashboardView.vue'
 
 const routes = [
   {
@@ -45,6 +46,11 @@ const routes = [
     path: '/bad',
     name: 'Bad',
     component: BadView
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: DashboardView
   }
 ]
 

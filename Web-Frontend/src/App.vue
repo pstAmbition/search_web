@@ -1,3 +1,4 @@
+
 <template>
   <div class="app-container">
     <!-- 顶部导航栏 -->
@@ -79,6 +80,8 @@ export default {
         router.push('/fake'); // 虚假信息知识库
       } else if (tab === 'bad') {
         router.push('/bad'); // 不良内容知识库
+      } else if (tab === 'dashboard') {
+        router.push('/dashboard'); // 数据库指标仪表盘
       }
     };
     
