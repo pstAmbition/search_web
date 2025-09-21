@@ -7,7 +7,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from config import Config
 from routes import api as api_blueprint
-from services import nebula_service, search_service
+from services import nebula_service, search_service,mongodb_service
 from flask.json.provider import DefaultJSONProvider
 
 
@@ -43,6 +43,7 @@ def create_app():
     with app.app_context():
         nebula_service.init_nebula_pool(app.config)
         search_service.init_search_clients(app.config)
+        mongodb_service.init_mongodb_pool(app.config)
 
     # 6. 注册Blueprint
     # 为所有路由添加 /api 前缀
