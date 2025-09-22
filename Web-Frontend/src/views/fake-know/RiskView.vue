@@ -266,7 +266,7 @@
 </template>
 
 <script>
-import { getRiskEvents, getAllEvents, exportEvents } from '../../service/apiManager'
+import { getRiskEvents, getAllEvents, exportEvents, getDashboardMetrics } from '../../service/apiManager'
 
 export default {
   name: 'RiskView',
@@ -284,18 +284,12 @@ export default {
       searchKeyword: '', // 搜索关键词
       selectedRegion: '', // 选中的地区，空字符串表示全部地区
       selectedMonth: '', // 发生年月
-      availableRegions: ['中国', '美国', '日本', '韩国', '英国', '德国', '法国', '其他'] // 可用地区列表
+      availableRegions: ['中国', '美国', '日本', '韩国', '英国', '德国', '法国', '以色列', '巴勒斯坦','哥伦比亚','其他'] // 可用地区列表‘
     }
   },
   mounted() {
-    // 首先获取核心的事件数据
+    // 获取核心的事件数据
     this.fetchEvents();
-    // 然后独立获取仪表盘数据，使用Promise.all确保即使失败也不影响主功能
-    Promise.all([
-      this.fetchDashboardMetrics()
-    ]).catch(error => {
-      console.warn('部分非核心数据获取失败，但页面仍可正常使用:', error);
-    });
   },
   methods: {
     // 获取事件数据（核心功能）

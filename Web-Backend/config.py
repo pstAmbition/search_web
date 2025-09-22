@@ -48,7 +48,7 @@ class Config:
     # MongoDB 配置
     MONGO_HOST = '127.0.0.1'
     MONGO_PORT = 27017
-    MONGO_USER = '' # 示例认证，请替换为您的真实认证信息
-    MONGO_PASSWORD = ''
-    MONGO_DBNAME = 'admin'
-    MONGO_COLLECTION = 'event'
+    MONGO_USER = ''  # 本地开发环境可以留空
+    MONGO_PASSWORD = ''  # 本地开发环境可以留空
+    MONGO_DBNAME = 'admin'  # 用户实际数据库名
+    MONGO_COLLECTION = 'event'  # 用户实际集合名
