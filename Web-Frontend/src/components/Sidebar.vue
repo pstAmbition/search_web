@@ -8,10 +8,10 @@
             <i class="fas fa-project-diagram"></i>
             <span>多模态传播模型工具</span>
             <!-- 展开/收起箭头 -->
-            <i
+            <!-- <i
               class="expand-arrow fas fa-chevron-right"
               :style="{ transform: isToolExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }"
-            ></i>
+            ></i> -->
           </a>
 
           <!-- 子菜单：v-show 控制显示，不销毁 -->
