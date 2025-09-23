@@ -29,7 +29,7 @@ def init_mongodb_pool(app_config):
         mongo_collection = app_config.get('MONGO_COLLECTION')
         
         
-        if username and password:
+        if mongo_user and mongo_pass:
             connection_string = f"mongodb://{mongo_user}:{mongo_pass}@{mongo_host}:{mongo_port}/"
         else:
             connection_string = f"mongodb://{mongo_host}:{mongo_port}/"

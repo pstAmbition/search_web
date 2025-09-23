@@ -43,7 +43,7 @@ def create_app():
     with app.app_context():
         nebula_service.init_nebula_pool(app.config)
         search_service.init_search_clients(app.config)
-        mongodb_service.init_mongodb_pool(app.config)
+        # mongodb_service.init_mongodb_pool(app.config)
 
     # 6. 注册Blueprint
     # 为所有路由添加 /api 前缀
