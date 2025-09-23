@@ -104,33 +104,15 @@ def search_text_route():
     #     return jsonify({"error": "'score' 参数必须是浮点数"}), 400
 
     start_time = time.time()
-    
-    # 使用模拟数据替代实际的Elasticsearch搜索，因为Elasticsearch服务器不可用
-    # 模拟搜索结果数据
-    mock_results = [
-        {
-            "id": "1",
-            "title": f"模拟结果 - {query_content}",
-            "content": f"这是关于'{query_content}'的模拟搜索结果内容。",
-            "score": score + 0.1,
-            "source": "模拟数据源",
-            "timestamp": "2025-09-22T22:45:00"
-        },
-        {
-            "id": "2",
-            "title": f"相关信息 - {query_content}",
-            "content": f"这是与'{query_content}'相关的更多模拟内容。",
-            "score": score - 0.1,
-            "source": "另一个模拟数据源",
-            "timestamp": "2025-09-22T22:44:00"
-        }
-    ]
-    
+    results = search_service.search_text(query_content, score, current_app.config)
+    print(results)
     duration = time.time() - start_time
-    current_app.logger.info(f"模拟文本 '{query_content}' 搜索耗时: {duration:.2f}s")
+    current_app.logger.info(f"文本 '{query_content}' 搜索耗时: {duration:.2f}s")
     
-    # 直接返回模拟结果
-    return jsonify({"search_results": mock_results})
+    if isinstance(results, dict) and "error" in results:
+        return jsonify(results), 500
+
+    return jsonify({"search_results": results})
 
 
 def _handle_file_upload(file_key, allowed_checker):

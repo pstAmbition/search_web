@@ -34,10 +34,7 @@ def init_mongodb_pool(app_config):
         
         print(f"MongoDB配置: host={mongo_host}, port={mongo_port}, dbname={mongo_dbname}, collection={mongo_collection}")
         
-<<<<<<< HEAD
-=======
         print("构建连接字符串...")
->>>>>>> 8f76e98f0749dc1bee3f9c818f81fb2b6abd29bc
         if mongo_user and mongo_pass:
             connection_string = f"mongodb://{mongo_user}:{mongo_pass}@{mongo_host}:{mongo_port}/"
         else:
