@@ -393,7 +393,7 @@ export default {
         console.log('仪表盘数据获取成功:', response.status);
         // 如果需要使用仪表盘数据，可以在这里处理
       } catch (error) {
-        console.warn('获取仪表盘数据失败，但不影响页面主要功能:', error.message);
+        console.warn('获取仪表盘数据失败，但不影响页面主要功能:', error ? error.message || error : '未知错误');
         // 不抛出错误，允许页面继续加载
       }
     },

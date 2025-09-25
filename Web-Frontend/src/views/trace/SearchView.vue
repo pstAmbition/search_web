@@ -128,34 +128,34 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
+                <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">序号</th>
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">稿件(推文)</th>
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">平台</th>
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">作者</th>
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">发布时间</th>
-                <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">图片</th>
-                <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">视频</th>
+                <!-- <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">图片</th>
+                <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">视频</th> -->
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">是否为源头</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="(item, index) in traceStore.paginatedResults" :key="item.id || index" class="hover:bg-gray-50 transition-colors">
-                <!-- 稿件(推文)列：点击调用get_graph_data_by_id -->
+                <!-- 添加序号列 -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ (traceStore.currentPage - 1) * 10 + index + 1 }}</td>
+                
+                <!-- 修改稿件列为全部可点击跳转 -->
                 <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                  <a  
-                    v-if="item.isSource"
+                  <a 
                     @click="switchToPathWithId({ id: item.id, event: item.event })" 
                     class="text-primary hover:text-primary/80 hover:underline cursor-pointer font-medium"
                   >
                     {{ item.content }}
                   </a>
-                  <span v-else class="text-gray-700 font-medium">
-                    {{ item.content }}
-                  </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ item.datasource }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ item.uname }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ formatDate(item.publishtime) }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                   <a v-if="item.imageUrl" href="#" @click.prevent="viewImage(item.imageUrl)"  target="_blank" class="text-primary hover:underline flex items-center justify-center">
                     <i class="fa fa-image mr-1"></i> 查看
                   </a>
@@ -166,7 +166,7 @@
                     <i class="fa fa-video-camera mr-1"></i> 查看
                   </a>
                   <span v-else class="text-gray-400">Null</span>
-                </td>
+                </td> -->
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                   <span 
                     :class="item.isSource ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
