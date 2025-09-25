@@ -98,6 +98,13 @@ export const getGraphDataById = (id, space_name = 'Social_Network_1') => {
   });
 };
 
+// 获取节点详细信息
+export const getStartNodeInfo = (node_id, space_name = 'Social_Network_1') => {
+  return apiClient.get('/getStartNodeInfo', {
+    params: { node_id, space_name }
+  });
+};
+
 // 通过事件名称获取关联图谱数据
 export const getGraphDataByEvent = (event, space_name = 'Social_Network_1') => {
   return apiClient.get('/getRelatedByEvent', {

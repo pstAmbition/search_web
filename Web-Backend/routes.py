@@ -85,6 +85,24 @@ def get_Original_Tweet_by_id():
         "count": len(result) if isinstance(result, list) else 0
     })
 
+@api.route('/getStartNodeInfo', methods=['GET'])
+def get_start_node_info_route():
+    node_id = request.args.get('node_id')
+    if not node_id:
+        return jsonify({"error": "请提供节点ID"}), 400
+
+    current_app.logger.info(f"查询节点ID: {node_id}")
+    space_name = current_app.config['NEBULA_SPACE']
+    result = nebula_service.get_start_node_info(node_id, space_name)
+
+    if isinstance(result, dict) and "error" in result:
+        return jsonify(result), 500
+
+    return jsonify({
+        "node_id": node_id,
+        "results": result
+    })
+
 # --- Search API Routes ---
 # 测试:curl -X POST "http://127.0.0.1:5001/api/search/text"   -H "Content-Type: application/x-www-form-urlencoded"   -d "queryContent=BGM一响，浓浓的归意再也掩饰不住了，2025年的春运已经开始了，希望每一个人都能快快乐 乐，平平安安的到家和家人团聚。&score=0.5"
 # 5192635628653361

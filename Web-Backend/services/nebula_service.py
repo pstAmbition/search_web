@@ -163,24 +163,64 @@ def get_graph_data_by_event(event, space_name):
 
 
 
-def get_graph_data_by_id(id, space_name):
-    """根据微博推文id生成微博的扩散图"""
-    query = """
-    
-    GO 1 TO 10 STEPS FROM $id OVER forwarded REVERSELY 
-    YIELD DISTINCT  src(edge) AS vid,dst(edge) AS end_vid,tags($$)[0] AS src_type, properties($$) AS src_props,edge AS e,rank(edge) AS e_rank,type(edge) AS e_type,src(edge) AS e_src,dst(edge) AS e_dst
-    
+def get_start_node_info(node_id, space_name):
+    """获取指定节点ID的详细类型和属性信息"""
+    start_node_query = """
+    MATCH (v) 
+    WHERE id(v) == $node_id
+    RETURN 
+      labels(v) AS node_types,  
+      properties(v) AS all_properties
     """
-    params = {"id": id}
-    return execute_query(query, params, space_name)
+    
+    params = {"node_id": node_id}
+    result = execute_query(start_node_query, params, space_name)
+    return result[0] if result else None
+
+def get_graph_data_by_id(id, space_name):
+    """根据微博推文id生成微博的扩散图，支持自动从Retweet节点获取rootmid属性对应的Original_Tweet节点"""
+    # 首先查询节点类型，判断是Original_Tweet还是Retweet
+    node_query = """
+    MATCH (v)
+    WHERE id(v) == $id AND (tags(v)[0] == 'Original_Tweet' OR tags(v)[0] == 'Retweet')
+    RETURN tags(v)[0] AS node_type, properties(v) AS props
+    """
+    
+    # 执行节点类型查询
+    node_result = execute_query(node_query, {"id": id}, space_name)
+    
+    # 确定最终要使用的起始ID
+    start_id = id
+    if node_result and len(node_result) > 0:
+        node_data = node_result[0]
+        node_type = node_data.get("node_type", "")
+        props = node_data.get("props", {})
+        
+        # 如果是Retweet节点，尝试获取其rootmid属性
+        if node_type == "Retweet" and "rootmid" in props:
+            start_id = props["rootmid"]
+    
+    # 使用确定的起始ID执行传播路径查询
+    path_query = """
+    GO 1 TO 10 STEPS FROM $start_id OVER forwarded REVERSELY
+    YIELD DISTINCT src(edge) AS vid, dst(edge) AS end_vid, tags($$)[0] AS src_type, properties($$) AS src_props,
+           edge AS e, rank(edge) AS e_rank, type(edge) AS e_type, src(edge) AS e_src, dst(edge) AS e_dst
+    """
+    
+    params = {"start_id": start_id}
+    return execute_query(path_query, params, space_name)
 
 
 def get_Original_Tweet_by_id(id, space_name):
-    """根据微博推文id生成微博的扩散图"""
+    """根据微博推文id获取推文内容，支持Original_Tweet和Retweet两种类型，哪个有结果就返回哪个"""
     query = """
     
-    FETCH PROP ON Original_Tweet $id
-    YIELD id(vertex) AS vid, properties(vertex) AS src_v;
+    // 先尝试获取Original_Tweet类型节点，如果存在则返回
+    // 如果不存在，则尝试获取Retweet类型节点
+    MATCH (v) 
+    WHERE id(v) == $id AND (tags(v)[0] == 'Original_Tweet' OR tags(v)[0] == 'Retweet')
+    RETURN id(v) AS vid, properties(v) AS src_v, tags(v)[0] AS node_type
+    LIMIT 1;
     
     """
     params = {"id": id}

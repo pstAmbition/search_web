@@ -177,6 +177,7 @@
   import * as echarts from 'echarts';
   import { getGraphDataById } from '../../service/apiManager.js';
   import { getOriginalTweetById } from '../../service/apiManager.js';
+  import { getStartNodeInfo } from '../../service/apiManager.js';
   import { formatDate } from '../../utils/date.js';
   import { useRouter } from 'vue-router';
   export default {
@@ -264,6 +265,11 @@
         return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
       };
       
+      // 节点详细信息变量
+      const startNodeInfo = ref(null);
+      // 所有节点的详细信息Map
+      const allNodesInfo = ref(new Map());
+      
       // 加载图谱数据和推文原文
       const loadGraphData = async (Id) => {
         if (!Id) return;
@@ -273,7 +279,7 @@
         // 标记为已搜索
         hasSearched.value = true;
         try {
-          // 并行请求图谱数据和推文原文
+          // 首先获取图谱数据和推文原文
           const [graphResponse, tweetResponse] = await Promise.all([
             getGraphDataById(Id),
             getOriginalTweetById(Id)
@@ -282,11 +288,55 @@
           // 清空旧数据
           relatedData.value = null;
           originalTweet.value = null;
+          startNodeInfo.value = null;
+          allNodesInfo.value.clear();
           await nextTick();
           
           // 更新数据
           relatedData.value = graphResponse.data;
           originalTweet.value = tweetResponse.data;
+          
+          // 收集所有需要查询的未知类型节点ID
+          const unknownTypeNodeIds = new Set();
+          
+          // 添加起始节点（无论类型如何，始终获取其详细信息）
+          unknownTypeNodeIds.add(Id);
+          
+          // 从图谱数据中提取类型为未知的节点ID
+          if (relatedData.value && relatedData.value.results) {
+            relatedData.value.results.forEach(item => {
+              // 检查源节点类型
+              if (item.e_src && (item.src_type === 'Unknown' || !item.src_type)) {
+                unknownTypeNodeIds.add(item.e_src);
+              }
+              // 检查目标节点类型
+              if (item.e_dst && item.e_type === 'forwarded' && (item.dst_type === 'Unknown' || !item.dst_type)) {
+                unknownTypeNodeIds.add(item.e_dst);
+              }
+            });
+          }
+          
+          // 批量查询所有未知类型节点的详细信息
+          const allNodesInfoPromises = Array.from(unknownTypeNodeIds).map(nodeId => 
+            getStartNodeInfo(nodeId).catch(error => {
+              console.warn(`获取节点 ${nodeId} 信息失败:`, error);
+              return { data: { results: null } };
+            })
+          );
+          
+          const allNodesInfoResponses = await Promise.all(allNodesInfoPromises);
+          
+          // 存储所有节点的详细信息
+          Array.from(unknownTypeNodeIds).forEach((nodeId, index) => {
+            const response = allNodesInfoResponses[index];
+            if (response && response.data && response.data.results) {
+              allNodesInfo.value.set(nodeId, response.data.results);
+              // 设置起始节点信息
+              if (nodeId === Id) {
+                startNodeInfo.value = response.data.results;
+              }
+            }
+          });
           
           // 强制重绘
           isDataReady.value = false;
@@ -370,16 +420,33 @@
         
         const centerId = currentGraphId.value;
         
+        // 获取起始节点的详细信息 - 仅使用API返回的数据
+        const centerNodeInfo = allNodesInfo.value.get(centerId);
+        const nodeName = centerNodeInfo?.all_properties?.text?.substring(0, 20) || '当前查询';
+        // 优化节点类型获取逻辑，处理不同格式的node_types数据
+        let finalNodeType = 'Unknown';
+        if (centerNodeInfo && centerNodeInfo.node_types) {
+          if (Array.isArray(centerNodeInfo.node_types) && centerNodeInfo.node_types.length > 0) {
+            finalNodeType = centerNodeInfo.node_types[0];
+          } else if (typeof centerNodeInfo.node_types === 'string') {
+            finalNodeType = centerNodeInfo.node_types;
+          }
+        }
+        
         nodes.set(centerId, {
           id: centerId,
-          name: '推文原文',
-          symbolSize: 60,
-          itemStyle: { color: '#FBBC05' },
+          name: nodeName,
+          symbolSize: getNodeSizeByType(finalNodeType), // 使用动态大小
+          itemStyle: { color: getNodeColorByType(finalNodeType) }, // 使用动态颜色
           category: 0,
+          originalData: {
+            vid: centerId,
+            type: finalNodeType,
+            ...centerNodeInfo?.all_properties
+          },
           draggable: true,
-          originalData: { vid: centerId, type: 'Original_Tweet' }
         });
-        nodeTypes.set('Original_Tweet', 0);
+        nodeTypes.set(finalNodeType, 0); // 使用API返回的节点类型
         nextCategoryId = 1;
         
         relatedData.value.results.forEach((item) => {
@@ -387,9 +454,6 @@
             console.warn('跳过无效边数据:', item);
             return;
           }
-
-          const srcNodeType = item.src_type || 'Unknown';
-          const srcNodeProps = item.src_props || {};
 
           let source = item.e_src;
           let target;
@@ -404,7 +468,21 @@
           }
 
           if (!nodes.has(source)) {
-            const finalSrcType = srcNodeType === 'Original_Tweet' ? 'Unknown' : srcNodeType;
+            // 获取节点信息：优先使用API获取的信息，如果没有则使用item中的信息
+            const nodeInfo = allNodesInfo.value.get(source);
+            const srcNodeType = item.src_type || 'Unknown';
+            const srcNodeProps = item.src_props || {};
+            
+            // 确定最终节点类型 - 处理不同格式的node_types数据
+            let finalSrcType = srcNodeType || 'Unknown';
+            if (nodeInfo && nodeInfo.node_types) {
+              if (Array.isArray(nodeInfo.node_types) && nodeInfo.node_types.length > 0) {
+                finalSrcType = nodeInfo.node_types[0];
+              } else if (typeof nodeInfo.node_types === 'string') {
+                finalSrcType = nodeInfo.node_types;
+              }
+            }
+            const nodeProps = nodeInfo?.all_properties || srcNodeProps;
 
             if (!nodeTypes.has(finalSrcType)) {
               nodeTypes.set(finalSrcType, nextCategoryId);
@@ -412,14 +490,18 @@
             }
             
             let nodeName;
-            if (srcNodeProps.content) {
-              nodeName = srcNodeProps.content.substring(0, 8) + '...';
-            } else if (srcNodeProps.retext) {
-              nodeName = srcNodeProps.retext.substring(0, 8) + '...';
-            } else if (srcNodeProps.title) {
-              nodeName = srcNodeProps.title.substring(0, 8) + '...';
+            if (nodeProps.content) {
+              nodeName = nodeProps.content.substring(0, 8) + '...';
+            } else if (nodeProps.retext) {
+              nodeName = nodeProps.retext.substring(0, 8) + '...';
+            } else if (nodeProps.title) {
+              nodeName = nodeProps.title.substring(0, 8) + '...';
+            } else if (nodeProps.text) {
+              nodeName = nodeProps.text.substring(0, 8) + '...';
+            } else if (srcNodeProps.name) {
+              nodeName = srcNodeProps.name.substring(0, 8) + '...';
             } else {
-              nodeName = '推文原文';
+              nodeName = '节点';
             }
                     
             nodes.set(source, {
@@ -429,24 +511,49 @@
               itemStyle: { color: getNodeColorByType(finalSrcType) },
               category: nodeTypes.get(finalSrcType),
               draggable: true,
-              originalData: { ...srcNodeProps, vid: source, type: finalSrcType }
+              originalData: {
+                vid: source,
+                type: finalSrcType,
+                ...nodeProps
+              }
             });
           }
 
           if (item.e_type === 'forwarded' && !nodes.has(target)) {
+            // 获取节点信息：优先使用API获取的信息，如果没有则使用item中的信息
+            const nodeInfo = allNodesInfo.value.get(target);
             const dstNodeType = item.dst_type || 'Unknown';
             const dstNodeProps = item.dst_props || {};
             
-            const finalDstType = dstNodeType === 'Original_Tweet' ? 'Unknown' : dstNodeType;
+            // 确定最终节点类型 - 处理不同格式的node_types数据
+            let finalDstType = dstNodeType || 'Unknown';
+            if (nodeInfo && nodeInfo.node_types) {
+              if (Array.isArray(nodeInfo.node_types) && nodeInfo.node_types.length > 0) {
+                finalDstType = nodeInfo.node_types[0];
+              } else if (typeof nodeInfo.node_types === 'string') {
+                finalDstType = nodeInfo.node_types;
+              }
+            }
+            const nodeProps = nodeInfo?.all_properties || dstNodeProps;
 
             if (!nodeTypes.has(finalDstType)) {
               nodeTypes.set(finalDstType, nextCategoryId);
               nextCategoryId++;
             }
             
-            let nodeName = dstNodeProps.title || dstNodeProps.name;
-            if (!nodeName) {
-              nodeName = target.slice(0, 8) + '...';
+            let nodeName;
+            if (nodeProps.content) {
+              nodeName = nodeProps.content.substring(0, 8) + '...';
+            } else if (nodeProps.retext) {
+              nodeName = nodeProps.retext.substring(0, 8) + '...';
+            } else if (nodeProps.title) {
+              nodeName = nodeProps.title.substring(0, 8) + '...';
+            } else if (nodeProps.text) {
+              nodeName = nodeProps.text.substring(0, 8) + '...';
+            } else if (dstNodeProps.name) {
+              nodeName = dstNodeProps.name.substring(0, 8) + '...';
+            } else {
+              nodeName = '节点';
             }
             
             nodes.set(target, {
@@ -456,7 +563,11 @@
               itemStyle: { color: getNodeColorByType(finalDstType) },
               category: nodeTypes.get(finalDstType),
               draggable: true,
-              originalData: { ...dstNodeProps, vid: target, type: finalDstType }
+              originalData: {
+                vid: target,
+                type: finalDstType,
+                ...nodeProps
+              }
             });
           }
 
@@ -522,12 +633,36 @@
         
         chart.value.setOption(option);
         
-        chart.value.on('click', (params) => {
+        chart.value.on('click', async (params) => {
           if (params.dataType === 'node') {
             if (params.data.originalData?.type === 'Original_Tweet') {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-              selectedNode.value = params.data.originalData;
+              const nodeId = params.data.id;
+              // 优先使用allNodesInfo中已有的完整节点信息
+              let nodeInfo = allNodesInfo.value.get(nodeId);
+              
+              // 如果没有完整信息，则调用API获取
+              if (!nodeInfo) {
+                loadingGraph.value = true;
+                try {
+                  const response = await getStartNodeInfo(nodeId);
+                  if (response && response.data && response.data.results) {
+                    nodeInfo = response.data.results;
+                    allNodesInfo.value.set(nodeId, nodeInfo);
+                  }
+                } catch (error) {
+                  console.warn(`获取节点 ${nodeId} 信息失败:`, error);
+                } finally {
+                  loadingGraph.value = false;
+                }
+              }
+              
+              // 设置选中节点信息，合并原始数据和API获取的数据
+              selectedNode.value = {
+                ...params.data.originalData,
+                ...nodeInfo?.all_properties
+              };
             }
           }
         });
@@ -609,6 +744,7 @@
         currentGraphEvent,  // 导出事件名称变量
         switchToEventView,
         hasSearched,  // 导出新增的状态变量
+        startNodeInfo,  // 导出节点详细信息
         // 导出新增的图片放大相关变量和方法
         showImageModal,
         selectedImageUrl,
