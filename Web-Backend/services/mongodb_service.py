@@ -543,7 +543,8 @@ def get_dashboard_metrics():
                     "$match": {  # 先过滤掉无效数据
                         "Praise": {"$exists": True},
                         "Reblog": {"$exists": True},
-                        "Comment": {"$exists": True}
+                        "Comment": {"$exists": True},
+                        "data_num": {"$exists": True}  # 确保data_num字段存在
                     }
                 },
                 {
@@ -551,7 +552,8 @@ def get_dashboard_metrics():
                         "_id": None,
                         "total_praise": {"$sum": "$Praise"},
                         "total_reblog": {"$sum": "$Reblog"},
-                        "total_comment": {"$sum": "$Comment"}
+                        "total_comment": {"$sum": "$Comment"},
+                        "total_data_num": {"$sum": "$data_num"}  # 新增：求和data_num字段
                     }
                 }
             ]
@@ -559,7 +561,8 @@ def get_dashboard_metrics():
             result = list(mongo_collection_obj.aggregate(pipeline, maxTimeMS=aggregation_timeout))
             if result:
                 stats = result[0]
-                metrics['total_nums'] = stats.get("total_praise", 0) + stats.get("total_reblog", 0) + stats.get("total_comment", 0)
+                # 修改计算逻辑：data_num总和 + 转赞评总和
+                metrics['total_nums'] = stats.get("total_data_num", 0) + stats.get("total_praise", 0) + stats.get("total_reblog", 0) + stats.get("total_comment", 0)
                 metrics['total_praise'] = stats.get("total_praise", 0)
                 metrics['total_reblog'] = stats.get("total_reblog", 0)
                 metrics['total_comment'] = stats.get("total_comment", 0)
