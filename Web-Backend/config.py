@@ -46,7 +46,7 @@ class Config:
     TOWHEE_DEVICE = 0 # 使用GPU 0, 如果没有GPU请设置为None
 
     # MongoDB 配置
-    MONGO_HOST = '127.0.0.1'
+    MONGO_HOST = '172.18.112.199'
     MONGO_PORT = 27017
     MONGO_USER = ''  # 本地开发环境可以留空
     MONGO_PASSWORD = ''  # 本地开发环境可以留空

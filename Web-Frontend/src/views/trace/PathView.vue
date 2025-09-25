@@ -33,24 +33,28 @@
       </div>
       
 
-      <!-- 新增推文原文板块 -->
+      <!-- 推文/稿件详情板块 -->
       <div v-if="hasSearched && originalTweet && originalTweet.results && originalTweet.results.length > 0" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h4 class="text-lg font-semibold text-gray-800 mb-3">推文原文</h4>
-      <div class="mb-4 p-2 bg-blue-50 rounded border border-blue-100">
-        <span class="font-medium text-blue-800">关联事件：</span>
-        <!-- 直接显示，即使为空也显示“无”，方便调试 -->
-        <a 
-          @click="switchToEventView(currentGraphEvent)"
-          class="text-primary hover:text-primary/80 hover:underline cursor-pointer"
-        >
-          {{ currentGraphEvent || '无关联事件' }}
-        </a>
-      </div>
+        <!-- 根据类型动态显示标题 -->
+        <h4 class="text-lg font-semibold text-gray-800 mb-3">
+          {{ originalTweet.results[0].node_type === 'Retweet' ? '稿件详情' : '推文详情' }}
+        </h4>
+        <div class="mb-4 p-2 bg-blue-50 rounded border border-blue-100">
+          <span class="font-medium text-blue-800">关联事件：</span>
+          <!-- 直接显示，即使为空也显示“无”，方便调试 -->
+          <a 
+            @click="switchToEventView(currentGraphEvent)"
+            class="text-primary hover:text-primary/80 hover:underline cursor-pointer"
+          >
+            {{ currentGraphEvent || '无关联事件' }}
+          </a>
+        </div>
         <div class="text-gray-700 mb-3">
           {{ originalTweet.results[0].src_v.content }}
         </div>
         <div class="flex flex-wrap gap-4 text-sm text-gray-500">
-          <div><span class="font-medium">发布者:</span> {{ originalTweet.results[0].src_v.uname }}</div>
+          <!-- 根据类型显示不同的发布者属性 -->
+          <div><span class="font-medium">发布者:</span> {{ originalTweet.results[0].node_type === 'Retweet' ? originalTweet.results[0].src_v.name : originalTweet.results[0].src_v.uname }}</div>
           <div><span class="font-medium">发布时间:</span> {{ formatDate(originalTweet.results[0].src_v.publishtimestamp) }}</div>
           <div v-if="originalTweet.results[0].src_v.isrumor !== null" class="flex items-center">
             <span class="font-medium">类型:</span>
@@ -423,13 +427,13 @@
         // 获取起始节点的详细信息 - 仅使用API返回的数据
         const centerNodeInfo = allNodesInfo.value.get(centerId);
         const nodeName = centerNodeInfo?.all_properties?.text?.substring(0, 20) || '当前查询';
-        // 优化节点类型获取逻辑，处理不同格式的node_types数据
+        // 优化节点类型获取逻辑，处理不同格式的node_type数据
         let finalNodeType = 'Unknown';
-        if (centerNodeInfo && centerNodeInfo.node_types) {
-          if (Array.isArray(centerNodeInfo.node_types) && centerNodeInfo.node_types.length > 0) {
-            finalNodeType = centerNodeInfo.node_types[0];
-          } else if (typeof centerNodeInfo.node_types === 'string') {
-            finalNodeType = centerNodeInfo.node_types;
+        if (centerNodeInfo && centerNodeInfo.node_type) {
+          if (Array.isArray(centerNodeInfo.node_type) && centerNodeInfo.node_type.length > 0) {
+            finalNodeType = centerNodeInfo.node_type[0];
+          } else if (typeof centerNodeInfo.node_type === 'string') {
+            finalNodeType = centerNodeInfo.node_type;
           }
         }
         
@@ -473,13 +477,13 @@
             const srcNodeType = item.src_type || 'Unknown';
             const srcNodeProps = item.src_props || {};
             
-            // 确定最终节点类型 - 处理不同格式的node_types数据
+            // 确定最终节点类型 - 处理不同格式的node_type数据
             let finalSrcType = srcNodeType || 'Unknown';
-            if (nodeInfo && nodeInfo.node_types) {
-              if (Array.isArray(nodeInfo.node_types) && nodeInfo.node_types.length > 0) {
-                finalSrcType = nodeInfo.node_types[0];
-              } else if (typeof nodeInfo.node_types === 'string') {
-                finalSrcType = nodeInfo.node_types;
+            if (nodeInfo && nodeInfo.node_type) {
+              if (Array.isArray(nodeInfo.node_type) && nodeInfo.node_type.length > 0) {
+                finalSrcType = nodeInfo.node_type[0];
+              } else if (typeof nodeInfo.node_type === 'string') {
+                finalSrcType = nodeInfo.node_type;
               }
             }
             const nodeProps = nodeInfo?.all_properties || srcNodeProps;
@@ -525,13 +529,13 @@
             const dstNodeType = item.dst_type || 'Unknown';
             const dstNodeProps = item.dst_props || {};
             
-            // 确定最终节点类型 - 处理不同格式的node_types数据
+            // 确定最终节点类型 - 处理不同格式的node_type数据
             let finalDstType = dstNodeType || 'Unknown';
-            if (nodeInfo && nodeInfo.node_types) {
-              if (Array.isArray(nodeInfo.node_types) && nodeInfo.node_types.length > 0) {
-                finalDstType = nodeInfo.node_types[0];
-              } else if (typeof nodeInfo.node_types === 'string') {
-                finalDstType = nodeInfo.node_types;
+            if (nodeInfo && nodeInfo.node_type) {
+              if (Array.isArray(nodeInfo.node_type) && nodeInfo.node_type.length > 0) {
+                finalDstType = nodeInfo.node_type[0];
+              } else if (typeof nodeInfo.node_type === 'string') {
+                finalDstType = nodeInfo.node_type;
               }
             }
             const nodeProps = nodeInfo?.all_properties || dstNodeProps;

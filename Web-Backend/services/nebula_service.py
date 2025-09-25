@@ -169,7 +169,7 @@ def get_start_node_info(node_id, space_name):
     MATCH (v) 
     WHERE id(v) == $node_id
     RETURN 
-      labels(v) AS node_types,  
+      labels(v) AS node_type,  
       properties(v) AS all_properties
     """
     

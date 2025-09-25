@@ -44,7 +44,7 @@ def create_app():
         # 根据需要启动相应服务
         nebula_service.init_nebula_pool(app.config)
         search_service.init_search_clients(app.config)
-        # mongodb_service.init_mongodb_pool(app.config)
+        mongodb_service.init_mongodb_pool(app.config)
 
     # 6. 注册Blueprint
     # 为所有路由添加 /api 前缀
@@ -64,4 +64,4 @@ app = create_app()
 if __name__ == '__main__':
     # 使用 gunicorn 或 uwsgi 部署时，不会执行这部分
     # 仅用于开发环境
-    app.run(host='127.0.0.1', port=5001, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)
