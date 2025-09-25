@@ -369,12 +369,7 @@ def export_events():
         conditions = []
         
         if keyword:
-            conditions.append({
-                "$or": [
-                    {"Event": {"$regex": keyword, "$options": "i"}},
-                    {"Content": {"$regex": keyword, "$options": "i"}}
-                ]
-            })
+            conditions.append({"Event": {"$regex": keyword, "$options": "i"}})
         
         if region:
             conditions.append({"region": region})
