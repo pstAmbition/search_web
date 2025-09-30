@@ -68,6 +68,12 @@
             <span>不良内容知识库</span>
           </a>
         </li>
+        <li class="menu-item" :class="{ 'active': activeTab === 'detection' }">
+          <a href="#" @click.prevent="switchTab('detection')">
+            <i class="fas fa-shield-alt"></i>
+            <span>虚假信息检测</span>
+          </a>
+        </li>
       </ul>
     </nav>
   </div>

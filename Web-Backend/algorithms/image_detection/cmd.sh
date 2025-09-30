@@ -1,0 +1,1 @@
+curl -X POST http://localhost:5013/api/image/detect -H "Content-Type: application/json" -d '{"image_url": "/home/lihr/finally_project/image_detection/data/ImageFornsicsOSN/tmp/input_png/canong3_canonxt_sub_03_000.png"}'

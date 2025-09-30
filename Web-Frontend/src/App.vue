@@ -87,6 +87,8 @@ export default {
         router.push('/bad'); // 不良内容知识库
       } else if (tab === 'dashboard') {
         router.push('/dashboard'); // 数据库指标仪表盘
+      } else if (tab === 'detection') {  // 新增这一行
+        router.push('/detection'); // 虚假信息检测  // 新增这一行
       }
     };
     
@@ -98,6 +100,8 @@ export default {
         activeTab.value = 'tool-path';
       } else if (newRouteName === 'Event') {
         activeTab.value = 'tool-event';
+      } else if (newRouteName === 'Detection') {  // 新增这一行
+        activeTab.value = 'detection';  // 新增这一行
       } else {
         activeTab.value = newRouteName.toLowerCase();
       }

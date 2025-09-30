@@ -1,0 +1,1 @@
+curl -X POST http://localhost:5011/rumordetect -H "Content-Type: application/json" -d '{"task_id": "flfx-001", "text": "【金日成的长寿梦】据金日成私人医生介绍，金日成曾授意他的医生们寻找方法让他活 到120岁。医生们使用的第一个方法是让金日成大笑的次数增多，能够让金日成一天大笑五次的演员能够获得功勋。从金日成78岁开始，他要求使用健康的年轻男性的血液为自己输血 。（中国日报网）http://t.cn/8k7CAkB", "data_id": "001"}'
