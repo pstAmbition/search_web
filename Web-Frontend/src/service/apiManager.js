@@ -3,7 +3,10 @@ import axios from 'axios';
 // 创建 axios 实例
 const apiClient = axios.create({
   baseURL: '/api', // 后端 API 基础 URL
-  timeout: 20000, // 请求超时时间
+  timeout: 120000, // 请求超时时间增加到120秒
+  headers: {
+    'Connection': 'keep-alive'
+  }
 });
 
 // 请求拦截器
@@ -113,17 +116,65 @@ export const getGraphDataByEvent = (event, space_name = 'Social_Network_1') => {
 };
 
 // 获取所有事件列表（支持分页和按platform、region、Time和关键字过滤）
-export const getAllEvents = (page = 1, pageSize = 10, platform = '', keyword = '', region = '', start_time = '', end_time = '', sortBy = 'Time', sortOrder = -1) => {
-  return apiClient.get('/getAllEvents', {
-    params: { page, page_size: pageSize, platform: platform, keyword: keyword, region: region, start_time: start_time, end_time: end_time, sort_by: sortBy, sort_order: sortOrder }
-  });
+export const getAllEvents = async (page = 1, pageSize = 10, platform = '', keyword = '', region = '', start_time = '', end_time = '', sortBy = 'Time', sortOrder = -1) => {
+  try {
+    console.log('正在请求事件数据...');
+    const startTime = Date.now();
+    // 增加超时时间到120秒，因为这个请求可能处理大量数据
+    const response = await apiClient.get('/getAllEvents', {
+      params: { page, page_size: pageSize, platform: platform, keyword: keyword, region: region, start_time: start_time, end_time: end_time, sort_by: sortBy, sort_order: sortOrder },
+      timeout: 120000 // 120秒超时
+    });
+    const endTime = Date.now();
+    console.log(`事件数据请求成功，耗时: ${endTime - startTime}ms`);
+    return response;
+  } catch (error) {
+    console.error('获取事件数据失败:', error);
+    // 增强错误处理，返回更友好的错误信息
+    if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      console.error('请求超时(ERR_ABORTED): 服务器处理时间过长，请稍后重试');
+    } else if (error.response) {
+      // 服务器返回了错误状态码
+      console.error('服务器错误:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      console.error('网络错误: 服务器未响应 (net::ERR_ABORTED)');
+    }
+    // 保留原始错误信息，不返回模拟数据，以便前端能够正确处理实际错误
+    throw error;
+  }
 };
 
 // 获取风险事件列表（isRisk="true"，支持分页和按platform、region、Time和关键字过滤）
-export const getRiskEvents = (page = 1, pageSize = 10, platform = '', keyword = '', region = '', start_time = '', end_time = '', sortBy = 'Time', sortOrder = -1) => {
-  return apiClient.get('/getRiskEvents', {
-    params: { page, page_size: pageSize, platform: platform, keyword: keyword, region: region, start_time: start_time, end_time: end_time, sort_by: sortBy, sort_order: sortOrder }
-  });
+export const getRiskEvents = async (page = 1, pageSize = 10, platform = '', keyword = '', region = '', start_time = '', end_time = '', sortBy = 'Time', sortOrder = -1) => {
+  try {
+    console.log('正在请求风险事件数据...');
+    const startTime = Date.now();
+    // 增加超时时间到120秒，因为这个请求可能处理大量数据
+    const response = await apiClient.get('/getRiskEvents', {
+      params: { page, page_size: pageSize, platform: platform, keyword: keyword, region: region, start_time: start_time, end_time: end_time, sort_by: sortBy, sort_order: sortOrder },
+      timeout: 120000 // 120秒超时
+    });
+    const endTime = Date.now();
+    console.log(`风险事件数据请求成功，耗时: ${endTime - startTime}ms`);
+    return response;
+  } catch (error) {
+    console.error('获取风险事件数据失败:', error);
+    // 增强错误处理，返回更友好的错误信息
+    if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      console.error('请求超时(ERR_ABORTED): 服务器处理时间过长，请稍后重试');
+    } else if (error.response) {
+      // 服务器返回了错误状态码
+      console.error('服务器错误:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      console.error('网络错误: 服务器未响应 (net::ERR_ABORTED)');
+    }
+    // 保留原始错误信息，不返回模拟数据，以便前端能够正确处理实际错误
+    throw error;
+  }
 };
 
 // 导出事件数据
@@ -149,45 +200,20 @@ export const getDashboardMetrics = async () => {
     console.log('响应数据大小:', JSON.stringify(response.data).length, 'bytes');
     return response;
   } catch (error) {
-    console.error('仪表盘数据请求失败:', error);
-    if (error.response) {
-      console.error('响应错误状态码:', error.response.status);
-      console.error('响应错误数据:', error.response.data);
+    console.error('获取仪表盘数据失败:', error);
+    // 增强错误处理，返回更友好的错误信息
+    if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      console.error('请求超时(ERR_ABORTED): 服务器处理时间过长，请稍后重试');
+    } else if (error.response) {
+      // 服务器返回了错误状态码
+      console.error('服务器错误:', error.response.status, error.response.data);
     } else if (error.request) {
-      console.error('网络错误 - 没有收到响应:', error.request);
-    } else {
-      console.error('请求配置错误:', error.message);
+      // 请求已发出但没有收到响应
+      console.error('网络错误: 服务器未响应 (net::ERR_ABORTED)');
     }
-    console.error('错误堆栈:', error.stack);
-    
-    // 返回一个默认的数据结构，包含DashboardView.vue中使用的所有必要字段
-    // 这样即使API调用失败，页面上的表格也能显示一些示例数据
-    return {
-      data: {
-        count1: 10000,  // 事件总数
-        risk_count: 3500,  // 风险事件数
-        platform_counts: [
-          { name: '微博', value: 3256 },
-          { name: '百度', value: 2485 },
-          { name: '推特', value: 1856 },
-          { name: '中国互联网联合辟谣平台', value: 1232 },
-          { name: '人民日报', value: 978 },
-          { name: '人民网', value: 743 },
-          { name: '微信', value: 2890 },
-          { name: '腾讯新闻', value: 1956 }
-        ],
-        language_counts: [
-          { name: '中文', value: 6890 },
-          { name: '英文', value: 3456 },
-          { name: '西班牙文', value: 2234 }
-        ],
-        field_count: 25,
-        total_nums: 150000,
-        platforms: ['微博', '百度', '推特', '中国互联网联合辟谣平台', '人民日报', '人民网', '微信', '腾讯新闻'],
-        languages: ['中文', '英文', '西班牙文'],
-        fields: ['字段1', '字段2', '字段3', '字段4', '字段5']
-      }
-    };
+    // 保留原始错误信息，不返回模拟数据，以便前端能够正确处理实际错误
+    throw error;
   }
 };
 

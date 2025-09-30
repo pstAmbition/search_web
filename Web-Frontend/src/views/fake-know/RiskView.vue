@@ -185,73 +185,74 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="col-span-2">
               <p class="text-sm font-medium text-gray-500">事件内容</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Event }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Event ? selectedEvent.Event : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">事件ID</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent._id }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent._id ? selectedEvent._id : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">发布者</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.account }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.account ? selectedEvent.account : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">发布时间</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Time }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Time ? selectedEvent.Time : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">平台</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.platform }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.platform ? selectedEvent.platform : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">类型</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Type }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Type ? selectedEvent.Type : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">语言</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.language }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.language ? selectedEvent.language : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">风险类型</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.isRisk }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.isRisk ? selectedEvent.isRisk : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">评论数</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Comment }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Comment ? selectedEvent.Comment : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">点赞数</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Praise }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Praise ? selectedEvent.Praise : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">转发数</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Reblog }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Reblog ? selectedEvent.Reblog : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">模态</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Modal }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Modal ? selectedEvent.Modal : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">IP</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.IP }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.IP ? selectedEvent.IP : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">工具</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Tool }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Tool ? selectedEvent.Tool : '暂无数据' }}</p>
             </div>
             <div class="col-span-2">
               <p class="text-sm font-medium text-gray-500">链接</p>
-              <a :href="selectedEvent.Link" target="_blank" rel="noopener noreferrer" class="mt-1 text-base text-blue-600 hover:text-blue-800 break-all">
+              <a v-if="selectedEvent && selectedEvent.Link" :href="selectedEvent.Link" target="_blank" rel="noopener noreferrer" class="mt-1 text-base text-blue-600 hover:text-blue-800 break-all">
                 {{ selectedEvent.Link }}
               </a>
+              <p v-else class="mt-1 text-base text-gray-900">暂无数据</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">地区</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.region }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.region ? selectedEvent.region : '暂无数据' }}</p>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-500">前置节点</p>
-              <p class="mt-1 text-base text-gray-900">{{ selectedEvent.Pre_node }}</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedEvent && selectedEvent.Pre_node ? selectedEvent.Pre_node : '暂无数据' }}</p>
             </div>
           </div>
         </div>
@@ -343,44 +344,125 @@ export default {
         console.log(`事件数据请求成功，耗时: ${endTime - startTime}ms`);
         console.log(`返回数据量: ${response.data?.results?.length || 0} 条, 总数据量: ${response.data?.total || 0} 条`);
         
-        if (response.data) {
-          this.events = response.data.results || []
-          this.total = response.data.total || 0
+        // 检查响应数据并处理
+        if (response && response.data) {
+          // 确保results是数组类型
+          if (Array.isArray(response.data.results)) {
+            this.events = response.data.results
+          } else {
+            console.warn('响应数据格式异常，results不是数组:', response.data.results)
+            this.events = []
+          }
+          // 确保total是数字类型
+          this.total = typeof response.data.total === 'number' ? response.data.total : 0
           this.totalPages = Math.ceil(this.total / this.pageSize)
           console.log(`数据更新完成 - 事件列表: ${this.events.length} 条, 总页数: ${this.totalPages}`);
+        } else {
+          console.warn('响应数据为空');
+          this.events = []
+          this.total = 0
+          this.totalPages = 0
         }
       } catch (error) {
+        // 首先检查error是否存在
+        if (!error) {
+          console.error('获取事件数据失败: 未知错误');
+          // 使用通用方法安全地显示错误消息
+          this.showMessage('获取数据失败: 未知错误', 'error');
+          this.events = [];
+          this.total = 0;
+          this.totalPages = 0;
+          return;
+        }
+        
         console.error('获取事件数据失败:', error);
-        console.error('错误详情:', {
-          message: error.message,
-          response: error.response ? {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            data: error.response.data
-          } : undefined,
-          request: error.request ? '请求已发送但未收到响应' : undefined,
-          config: error.config ? {
-            url: error.config.url,
-            method: error.config.method,
-            params: error.config.params
-          } : undefined
-        });
+        
+        // 更安全的错误详情日志记录
+        try {
+          console.error('错误详情:', {
+            message: error ? (error.message || '无错误消息') : '无错误对象',
+            response: error && error.response ? {
+              status: error.response.status || '未知状态',
+              statusText: error.response.statusText || '未知状态文本',
+              data: error.response.data || '无响应数据'
+            } : '无响应',
+            request: error && error.request ? '请求已发送但未收到响应' : '无请求',
+            config: error && error.config ? {
+              url: error.config.url || '无URL',
+              method: error.config.method || '无方法',
+              params: error.config.params || '无参数'
+            } : '无配置'
+          });
+        } catch (logError) {
+          console.warn('记录错误详情时出错:', logError);
+        }
         
         // 清空事件列表，避免显示旧数据
         this.events = [];
         this.total = 0;
         this.totalPages = 0;
         
-        // 显示错误提示
-        if (error.response) {
-          // 服务器返回了错误状态码
-          this.$message.error(`获取数据失败: ${error.response.status} - ${error.response.statusText}`);
-        } else if (error.request) {
-          // 请求已发出但没有收到响应
-          this.$message.error('网络错误，请检查您的网络连接');
+        // 显示错误提示 - 增强的防御性编程
+        let errorMsg = '获取数据失败';
+        
+        try {
+          if (error && error.response) {
+            // 服务器返回了错误状态码
+            errorMsg = `获取数据失败: ${error.response.status || '未知状态'} - ${error.response.statusText || '未知错误'}`;
+            
+            // 用try-catch包裹所有对error.response.data的访问
+            try {
+              // 检查response.data是否存在
+              if (error.response.data) {
+                // 尝试获取更具体的错误信息
+                if (typeof error.response.data === 'object') {
+                  // 使用可选链操作符和安全检查
+                  if ('error' in error.response.data && error.response.data.error) {
+                    errorMsg = `获取数据失败: ${error.response.data.error}`;
+                  } else if ('message' in error.response.data && error.response.data.message) {
+                    errorMsg = `获取数据失败: ${error.response.data.message}`;
+                  }
+                } else if (typeof error.response.data === 'string') {
+                  errorMsg = `获取数据失败: ${error.response.data}`;
+                }
+              }
+            } catch (dataError) {
+              console.warn('解析错误响应数据时出错:', dataError);
+            }
+          } else if (error && error.request) {
+            // 请求已发出但没有收到响应
+            errorMsg = '网络错误，请检查您的网络连接';
+          } else if (error && error.message) {
+            // 其他错误
+            errorMsg = `获取数据失败: ${error.message || '未知错误'}`;
+          }
+        } catch (e) {
+          console.warn('构建错误消息时出错:', e);
+          errorMsg = '获取数据失败: 处理错误时发生异常';
+        }
+        
+        // 使用通用方法安全地显示错误消息
+        this.showMessage(errorMsg, 'error');
+      }
+    },
+    
+    // 安全显示消息的通用方法
+    showMessage(message, type = 'error') {
+      try {
+        if (this.$message && typeof this.$message[type] === 'function') {
+          this.$message[type](message);
         } else {
-          // 其他错误
-          this.$message.error(`获取数据失败: ${error.message}`);
+          console.warn(`无法使用this.$message.${type}显示消息`);
+          // 使用浏览器原生alert替代
+          alert(message);
+        }
+      } catch (error) {
+        console.error('显示消息失败:', error);
+        // 即使try-catch失败也尝试显示alert
+        try {
+          alert(message);
+        } catch (alertError) {
+          console.error('显示alert也失败:', alertError);
         }
       }
     },
@@ -390,7 +472,7 @@ export default {
       try {
         console.log('开始获取仪表盘数据...');
         const response = await getDashboardMetrics();
-        console.log('仪表盘数据获取成功:', response.status);
+        console.log('仪表盘数据获取成功:', response.status || '默认数据');
         // 如果需要使用仪表盘数据，可以在这里处理
       } catch (error) {
         console.warn('获取仪表盘数据失败，但不影响页面主要功能:', error ? error.message || error : '未知错误');
@@ -413,8 +495,20 @@ export default {
     
     // 处理搜索
     handleSearch() {
-      this.page = 1 // 搜索时重置到第一页
-      this.fetchEvents()
+      console.log('执行搜索操作');
+      console.log('搜索参数:', {
+        keyword: this.searchKeyword,
+        platform: this.selectedPlatform,
+        region: this.selectedRegion,
+        month: this.selectedMonth,
+        page: 1,
+        pageSize: this.pageSize
+      });
+      
+      // 重置页码为1
+      this.page = 1;
+      // 重新获取数据
+      this.fetchEvents();
     },
     
     // 重置搜索条件
@@ -449,50 +543,130 @@ export default {
           this.selectedPlatform
         )
         
+        // 加强防御性编程 - 首先检查response是否存在
+        if (!response) {
+          console.error('导出请求未返回响应');
+          // 安全显示错误消息
+          this.showMessage('导出失败: 未收到响应', 'error');
+          return;
+        }
+        
         // 检查响应是否为Blob类型
-        if (response.data instanceof Blob) {
-          // 创建下载链接
-          const url = URL.createObjectURL(response.data)
-          const link = document.createElement('a')
-          link.href = url
-          // 设置文件名，包含导出时间
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-          link.download = `events_export_${timestamp}.json`
-          // 触发下载
-          document.body.appendChild(link)
-          link.click()
-          // 清理
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
-          
-          alert('数据导出成功')
-        } else {
-          // 尝试将响应数据解析为JSON（兼容旧版本）
-          try {
-            const data = response.data
-            if (data && data.results) {
-              const dataStr = JSON.stringify(data.results, null, 2)
-              const dataBlob = new Blob([dataStr], { type: 'application/json' })
-              const url = URL.createObjectURL(dataBlob)
-              const link = document.createElement('a')
-              link.href = url
-              const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-              link.download = `events_export_${timestamp}.json`
-              document.body.appendChild(link)
-              link.click()
-              document.body.removeChild(link)
-              URL.revokeObjectURL(url)
-              
-              alert(`成功导出 ${data.total || 0} 条数据`)
+        try {
+          if (response.data instanceof Blob) {
+            // 创建下载链接
+            const url = URL.createObjectURL(response.data)
+            const link = document.createElement('a')
+            link.href = url
+            // 设置文件名，包含导出时间
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+            link.download = `events_export_${timestamp}.json`
+            // 触发下载
+            document.body.appendChild(link)
+            link.click()
+            // 清理
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+            
+            // 安全显示成功消息
+            this.showMessage('数据导出成功', 'success')
+          } else {
+            // 尝试将响应数据解析为JSON（兼容旧版本）
+            try {
+              // 多层安全检查
+              if (response.data && typeof response.data === 'object') {
+                const data = response.data
+                if (data && data.results && Array.isArray(data.results)) {
+                  const dataStr = JSON.stringify(data.results, null, 2)
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+                  const url = URL.createObjectURL(dataBlob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+                  link.download = `events_export_${timestamp}.json`
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                  URL.revokeObjectURL(url)
+                  
+                  this.$message.success('数据导出成功')
+                } else {
+                  console.warn('导出数据格式不支持:', data)
+                  // 安全显示错误消息
+                  this.showMessage('导出失败: 数据格式不支持', 'error')
+                }
+              } else {
+                console.warn('导出响应数据类型异常:', typeof response.data)
+                // 安全显示错误消息
+                this.showMessage('导出失败: 响应数据异常', 'error')
+              }
+            } catch (jsonError) {
+              console.error('解析导出数据失败:', jsonError)
+              // 安全显示错误消息
+              this.showMessage('导出失败: 数据解析错误', 'error')
             }
-          } catch (jsonError) {
-            console.error('解析响应数据失败:', jsonError)
-            alert('导出数据失败，请稍后重试')
           }
+        } catch (downloadError) {
+          console.error('处理下载过程中出错:', downloadError)
+          // 安全显示错误消息
+          this.showMessage('导出失败: 下载处理错误', 'error')
         }
       } catch (error) {
-        console.error('导出数据失败:', error)
-        alert('导出数据失败，请稍后重试')
+        console.error('导出数据失败:', error);
+        // 更安全的错误信息获取逻辑
+        try {
+          let errorMsg = '未知错误';
+          
+          try {
+            if (error) {
+              if (error.response) {
+                // 服务器返回了错误状态码
+                errorMsg = `服务器错误: ${error.response.status || '未知状态'}`;
+                
+                // 使用try-catch包裹所有对error.response.data的访问
+                try {
+                  // 安全地检查error.response.data中的详细信息
+                  if (error.response.data) {
+                    if (typeof error.response.data === 'object') {
+                      if ('error' in error.response.data && error.response.data.error) {
+                        errorMsg = error.response.data.error;
+                      } else if ('message' in error.response.data && error.response.data.message) {
+                        errorMsg = error.response.data.message;
+                      }
+                    } else if (typeof error.response.data === 'string') {
+                      errorMsg = error.response.data;
+                    }
+                  }
+                } catch (dataError) {
+                  console.warn('解析错误响应数据时出错:', dataError);
+                }
+              } else if (error.request) {
+                // 请求已发出但没有收到响应
+                errorMsg = '网络错误: 请求超时';
+              } else if (error.message) {
+                // 其他错误
+                errorMsg = error.message;
+              }
+            }
+            
+            // 安全地显示错误消息
+            try {
+              this.$message.error(`导出失败: ${errorMsg}`);
+            } catch (msgError) {
+              console.error('显示错误消息失败:', msgError);
+            }
+          } catch (errMsgError) {
+            console.error('构建错误消息时出错:', errMsgError);
+            try {
+              this.$message.error('导出失败: 处理错误时发生异常');
+            } catch (msgError) {
+              console.error('显示错误消息失败:', msgError);
+            }
+          }
+        } catch (errMsgError) {
+          console.error('构建错误消息时出错:', errMsgError);
+          this.$message.error('导出失败: 处理错误时发生异常');
+        }
       }
     },
     changePage(newPage) {
@@ -502,12 +676,29 @@ export default {
       }
     },
     viewEventDetail(event) {
-      this.selectedEvent = event
-      this.showDetail = true
+      // 增强防御性编程，确保event存在且为对象
+      try {
+        if (!event || typeof event !== 'object') {
+          console.warn('尝试查看详情的事件数据无效:', event);
+          this.$message.warning('事件数据无效，无法查看详情');
+          return;
+        }
+        // 创建一个深拷贝，避免直接修改原事件对象
+        this.selectedEvent = JSON.parse(JSON.stringify(event));
+        this.showDetail = true;
+        console.log('成功显示事件详情');
+      } catch (error) {
+        console.error('显示事件详情失败:', error);
+        this.$message.error('显示详情时发生错误');
+        // 确保selectedEvent始终是一个安全的对象
+        this.selectedEvent = {};
+        this.showDetail = false;
+      }
     },
     closeDetail() {
-      this.showDetail = false
-      this.selectedEvent = {}
+      this.showDetail = false;
+      // 重置为安全的空对象
+      this.selectedEvent = {};
     }
   }
 }

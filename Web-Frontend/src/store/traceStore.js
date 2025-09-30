@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
 // 创建溯源查询结果的store
 export const useTraceStore = defineStore('trace', {

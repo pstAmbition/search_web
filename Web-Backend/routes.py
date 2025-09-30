@@ -3,8 +3,10 @@
 import os
 import time
 import calendar
-from flask import Blueprint, request, jsonify, current_app, make_response
+import json
+from flask import Blueprint, request, jsonify, current_app, make_response, Response
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from services import nebula_service, search_service, mongodb_service
 import utils
 from datetime import datetime
@@ -263,7 +265,7 @@ def get_all_events():
     """获取所有事件，支持分页、排序和按平台、region、Time和关键字过滤"""
     try:
         page = int(request.args.get('page', 1))
-        page_size = int(request.args.get('page_size', 10))
+        page_size = int(request.args.get('page_size', 10))  # 增加默认限制
         sort_by = request.args.get('sort_by', 'Time')
         sort_order = int(request.args.get('sort_order', -1))
         platform = request.args.get('platform', '')
@@ -304,7 +306,7 @@ def get_risk_events():
     """获取所有isRisk=true的风险事件，支持分页、排序和按平台、region、Time和关键字过滤"""
     try:
         page = int(request.args.get('page', 1))
-        page_size = int(request.args.get('page_size', 10))
+        page_size = int(request.args.get('page_size', 10))  # 增加默认限制
         sort_by = request.args.get('sort_by', 'Time')
         sort_order = int(request.args.get('sort_order', -1))
         platform = request.args.get('platform', '')
@@ -362,19 +364,16 @@ def export_events():
         end_time = request.args.get('end_time', '')
         is_risk = request.args.get('is_risk', '')
         platform = request.args.get('platform', '')
-        export_format = request.args.get('format', 'json')  # 导出格式：json 或 jsonl
+        export_format = request.args.get('format', 'json')  # 导出格式：json 
+        
+        current_app.logger.info(f"接收到导出请求: keyword={keyword}, region={region}, start_time={start_time}, end_time={end_time}, is_risk={is_risk}, platform={platform}, format={export_format}")
         
         # 构建查询条件
         query = {}
         conditions = []
         
         if keyword:
-            conditions.append({
-                "$or": [
-                    {"Event": {"$regex": keyword, "$options": "i"}},
-                    {"Content": {"$regex": keyword, "$options": "i"}}
-                ]
-            })
+            conditions.append({"Event": {"$regex": keyword, "$options": "i"}})
         
         if region:
             conditions.append({"region": region})
@@ -409,41 +408,66 @@ def export_events():
             else:
                 query = conditions[0]
         
-        # 导出所有匹配的事件（不分页）
-        events, total = mongodb_service.search_events(query, page=1, page_size=100000)
+        current_app.logger.info(f"构建的查询条件: {query}")
         
-        if isinstance(events, dict) and "error" in events:
-            return jsonify(events), 500
-        
-        # 根据导出格式返回不同的响应
-        if export_format.lower() == 'jsonl':
-            # 生成JSONL格式的响应
-            jsonl_content = ''
-            for event in events:
-                # 确保event是可JSON序列化的
-                if isinstance(event, dict):
-                    jsonl_content += json.dumps(event, ensure_ascii=False) + '\n'
-                else:
-                    # 如果event不是dict，尝试转换
-                    try:
-                        jsonl_content += json.dumps(dict(event), ensure_ascii=False) + '\n'
-                    except:
-                        # 忽略无法序列化的条目
-                        continue
+        # 尝试使用流式处理进行导出
+        try:
+            # 使用流式模式，获取游标而不是一次性加载所有数据
+            cursor, _ = mongodb_service.search_events(query, page=1, page_size=100000, is_export=True, streaming=True)
             
-            # 创建响应对象，设置适当的头部
-            response = make_response(jsonl_content)
-            response.headers['Content-Type'] = 'application/jsonl'
+            # 如果使用了流式处理，返回生成器响应
+            def generate():
+                count = 0
+                for event in cursor:
+                    # 转换ObjectId为字符串
+                    event = mongodb_service._convert_objectid_to_string(event)
+                    count += 1
+                    # 生成JSON行
+                    yield json.dumps(event, ensure_ascii=False) + '\n'
+                # 添加总数信息到最后一行（可选）
+                # yield json.dumps({"total_records": count}, ensure_ascii=False) + '\n'
+            
+            # 创建流式响应
+            response = Response(generate(), content_type='application/jsonl')
             response.headers['Content-Disposition'] = 'attachment; filename="events_export.jsonl"'
-            response.headers['X-Total-Records'] = str(total)
             return response
-        else:
-            # 默认返回JSON格式
-            return jsonify({
-                "results": events,
-                "total": total,
-                "export_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            })
+        except Exception as e:
+            current_app.logger.warning(f"流式导出失败，回退到常规导出: {str(e)}")
+            # 回退到常规导出方式
+            events, total = mongodb_service.search_events(query, page=1, page_size=100000, is_export=True)
+            
+            if isinstance(events, dict) and "error" in events:
+                return jsonify(events), 500
+            
+            # 根据导出格式返回不同的响应
+            if export_format.lower() == 'jsonl' or export_format.lower() == 'json':
+                # 生成JSONL格式的响应
+                jsonl_content = ''
+                for event in events:
+                    # 确保event是可JSON序列化的
+                    if isinstance(event, dict):
+                        jsonl_content += json.dumps(event, ensure_ascii=False) + '\n'
+                    else:
+                        # 如果event不是dict，尝试转换
+                        try:
+                            jsonl_content += json.dumps(dict(event), ensure_ascii=False) + '\n'
+                        except:
+                            # 忽略无法序列化的条目
+                            continue
+                
+                # 创建响应对象，设置适当的头部
+                response = make_response(jsonl_content)
+                response.headers['Content-Type'] = 'application/jsonl'
+                response.headers['Content-Disposition'] = 'attachment; filename="events_export.jsonl"'
+                response.headers['X-Total-Records'] = str(total)
+                return response
+            else:
+                # 默认返回JSON格式
+                return jsonify({
+                    "results": events,
+                    "total": total,
+                    "export_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
         
     except Exception as e:
         current_app.logger.error(f"Export events error: {str(e)}")
