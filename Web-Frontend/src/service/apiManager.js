@@ -3,10 +3,7 @@ import axios from 'axios';
 // 创建 axios 实例
 const apiClient = axios.create({
   baseURL: '/api', // 后端 API 基础 URL
-  timeout: 120000, // 请求超时时间增加到120秒
-  headers: {
-    'Connection': 'keep-alive'
-  }
+  timeout: 120000 // 请求超时时间增加到120秒
 });
 
 // 请求拦截器
@@ -213,6 +210,73 @@ export const getDashboardMetrics = async () => {
       console.error('网络错误: 服务器未响应 (net::ERR_ABORTED)');
     }
     // 保留原始错误信息，不返回模拟数据，以便前端能够正确处理实际错误
+    throw error;
+  }
+};
+
+// 虚假信息知识库相关 API
+
+// 获取虚假信息列表
+export const getAllFakeKnowledge = async () => {
+  try {
+    console.log('正在请求虚假信息列表...');
+    // 添加较短的超时设置，避免长时间等待
+    const response = await apiClient.get('/fake-knowledge/all', {
+      timeout: 30000 // 30秒超时
+    });
+    console.log('虚假信息列表请求成功，返回完整响应对象');
+    // 返回完整响应对象，与其他API函数保持一致
+    return response;
+  } catch (error) {
+    console.error('获取虚假信息列表失败:', error);
+    // 重新抛出错误，保留原始错误信息
+    throw error;
+  }
+};
+
+// 获取虚假信息知识库统计数据
+export const getFakeKnowledgeStats = async () => {
+  try {
+    const response = await apiClient.get('/fake-knowledge/stats');
+    return response.data;
+  } catch (error) {
+    console.error('获取统计数据失败:', error);
+    throw error;
+  }
+};
+
+// 获取虚假信息详情
+export const getFakeKnowledgeDetail = async (fakeId) => {
+  console.log(`开始获取虚假信息详情，ID: ${fakeId}`);
+  
+  try {
+    const response = await apiClient.get(`/fake-knowledge/detail/${encodeURIComponent(fakeId)}`);
+    return response;
+  } catch (error) {
+    console.error('获取虚假信息详情失败:', error);
+    throw error;
+  }
+};
+
+// 获取虚假信息传播图谱数据
+export const getFakeGraphData = async (fakeId) => {
+  try {
+    const response = await apiClient.get(`/fake-knowledge/graph/${encodeURIComponent(fakeId)}`);
+    return response;
+  } catch (error) {
+    console.error('获取虚假信息图谱数据失败:', error);
+    throw error;
+  }
+};
+
+// 获取虚假信息多媒体资源
+export const getFakeKnowledgeMedia = async (fakeId) => {
+  try {
+    console.log(`开始获取虚假信息多媒体资源，ID: ${fakeId}`);
+    const response = await apiClient.get(`/fake-knowledge/media/${encodeURIComponent(fakeId)}`);
+    return response;
+  } catch (error) {
+    console.error('获取虚假信息多媒体资源失败:', error);
     throw error;
   }
 };

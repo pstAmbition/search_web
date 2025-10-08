@@ -7,12 +7,12 @@ import FakeView from '../views/fake-know/FakeView.vue'
 import BadView from '../views/fake-know/BadView.vue'
 import DashboardView from '../views/dashboard/DashboardView.vue'
 import DetectionView from '../views/detection/DetectionView.vue'
+import FakeKnowledgeDetail from '../views/fake-know/FakeKnowledgeDetail.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Search',
-    component: SearchView
+    redirect: '/fake'
   },
   {
     path: '/trace',
@@ -42,6 +42,18 @@ const routes = [
     path: '/fake',
     name: 'Fake',
     component: FakeView
+  },
+  {
+    path: '/fake/detail',
+    name: 'FakeKnowledgeDetail',
+    component: FakeKnowledgeDetail,
+    meta: {
+      title: '虚假信息详情',
+      requireAuth: false
+    },
+    props: (route) => ({
+      id: route.query.id
+    })
   },
   {
     path: '/bad',

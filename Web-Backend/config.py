@@ -29,6 +29,12 @@ class Config:
     NEBULA_PASSWORD = 'p' # 示例密码，请替换为您的真实密码
     NEBULA_SPACE = 'Social_Network_1'
     NEBULA_POOL_SIZE = 10
+    
+    # Neo4j 配置
+    NEO4J_HOST = os.environ.get('NEO4J_HOST', 'localhost')
+    NEO4J_PORT = int(os.environ.get('NEO4J_PORT', 7687))
+    NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
+    NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'password')
 
     # Milvus 配置
     MILVUS_URI = "http://172.18.112.199:31800"
@@ -44,11 +50,3 @@ class Config:
     # Towhee Video Search 配置
     TOWHEE_LEVELDB_PATH = '/data/storage/8888/sunye/video_search2.db' # 重要：请替换为您的真实路径
     TOWHEE_DEVICE = 0 # 使用GPU 0, 如果没有GPU请设置为None
-
-    # MongoDB 配置
-    MONGO_HOST = '127.0.0.1'
-    MONGO_PORT = 27017
-    MONGO_USER = ''  # 本地开发环境可以留空
-    MONGO_PASSWORD = ''  # 本地开发环境可以留空
-    MONGO_DBNAME = 'admin'  # 用户实际数据库名
-    MONGO_COLLECTION = 'event'  # 用户实际集合名
