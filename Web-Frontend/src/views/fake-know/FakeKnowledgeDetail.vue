@@ -786,13 +786,21 @@ export default {
       let nextCategoryId = 0;
     
       // 中心虚假信息节点ID
-      const centerFakeId = 'source_' + fakeId.value;
+      let centerFakeId = 'source_' + fakeId.value;
+      
+      // 查找实际的INFO节点ID
+      graphData.value.results.forEach((item) => {
+        if (item.dst_type === 'INFO' && item.e_type === 'post') {
+          centerFakeId = item.e_dst;
+        }
+      });
     
       // 识别需要保留的USER节点 - 只保留用POST指向INFO节点的USER
       const validUserNodes = new Set();
       const repostNodes = new Map(); // 用于限制REPOST节点数量
       const commentNodes = new Map(); // 用于限制COMMENT节点数量
       const review2Links = []; // 存储有review2关系的边，优先展示
+      const firstLevelCommentsWithReplies = new Set(); // 存储有二级评论的一级评论节点ID
     
       // 第一次遍历：识别有效的USER节点和review2关系
       graphData.value.results.forEach((item) => {
@@ -804,6 +812,8 @@ export default {
         // 识别review2关系的边
         if (item.e_type === 'review2' && item.dst_type === 'COMMENT') {
           review2Links.push(item);
+          // 记录有二级评论的一级评论节点
+          firstLevelCommentsWithReplies.add(item.e_dst);
         }
       });
     
@@ -843,6 +853,11 @@ export default {
           if (!item.e_dst) return; // 过滤无效目标
           target = item.e_dst;
         }
+        
+        // 特殊处理review1关系，确保target是正确的INFO节点
+        if (item.e_type === 'review1' && item.dst_type === 'INFO') {
+          target = centerFakeId;
+        }
     
         // 处理源节点
         if (!nodes.has(source)) {
@@ -853,7 +868,8 @@ export default {
           
           // 对COMMENT节点限制数量
           if (srcNodeType === 'COMMENT') {
-            if (commentNodes.size >= 20 && !commentNodes.has(source)) {
+            // 优先保留有二级评论的一级评论节点
+            if (commentNodes.size >= 20 && !commentNodes.has(source) && !firstLevelCommentsWithReplies.has(source)) {
               return;
             }
             commentNodes.set(source, true);
@@ -909,7 +925,8 @@ export default {
           
           // 对COMMENT节点限制数量
           if (dstNodeType === 'COMMENT') {
-            if (commentNodes.size >= 20 && !commentNodes.has(target)) {
+            // 优先保留有二级评论的一级评论节点
+            if (commentNodes.size >= 20 && !commentNodes.has(target) && !firstLevelCommentsWithReplies.has(target)) {
               return;
             }
             commentNodes.set(target, true);

@@ -4,11 +4,11 @@ import os
 import time
 import calendar
 import json
-from flask import Blueprint, request, jsonify, current_app, make_response, Response
+from flask import Blueprint, request, jsonify, current_app, make_response, Response, redirect
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from services import nebula_service, search_service, mongodb_service,neo4j_service
-#from services import neo4j_service
+#from services import nebula_service, search_service, mongodb_service,neo4j_service
+from services import neo4j_service
 import utils
 from datetime import datetime
 import random
@@ -714,21 +714,21 @@ def get_fake_media_handler(fake_id):
         
         # 检查并添加本地图片文件
         if os.path.exists(img_dir):
-            # 查找所有以fake_id开头或等于fake_id的图片文件
+            # 查找所有包含fake_id的图片文件，使用更灵活的匹配规则
             for filename in os.listdir(img_dir):
-                if filename.startswith(fake_id) or filename == fake_id:
-                    # 构建相对URL路径
-                    img_url = f"/uploads/{filename}"
+                if fake_id in filename:
+                    # 构建完整的URL路径，指向Flask应用运行的5000端口
+                    img_url = f"http://localhost:5000/fake/img/{filename}"
                     media["pictures"].append(img_url)
                     current_app.logger.info(f"找到本地图片文件: {filename}")
         
         # 检查并添加本地视频文件
         if os.path.exists(video_dir):
-            # 查找所有以fake_id开头或等于fake_id的视频文件
+            # 查找所有包含fake_id的视频文件，使用更灵活的匹配规则
             for filename in os.listdir(video_dir):
-                if filename.startswith(fake_id) or filename == fake_id:
-                    # 构建相对URL路径
-                    video_url = f"/uploads/{filename}"
+                if fake_id in filename:
+                    # 构建完整的URL路径，指向Flask应用运行的5000端口
+                    video_url = f"http://localhost:5000/fake/video/{filename}"
                     media["videos"].append(video_url)
                     current_app.logger.info(f"找到本地视频文件: {filename}")
         
@@ -945,6 +945,34 @@ def redirect_fake_news_handler():
         "error": "API路径已更新，请使用 /api/fake-knowledge/all",
         "redirect_to": "/api/fake-knowledge/all"
     }), 301
+
+# 修复detail?id=xxx格式的错误路径重定向
+@api.route('/detail')
+def redirect_detail_handler():
+    """处理/detail?id=xxx格式的错误路径，重定向到正确的API路径"""
+    fake_id = request.args.get('id')
+    if fake_id:
+        # 重定向到正确的API路径
+        return redirect(f'/api/fake-knowledge/detail/{fake_id}')
+    else:
+        return jsonify({
+            "success": False,
+            "error": "请提供正确的ID参数"
+        }), 400
+
+# 修复可能的media?id=xxx格式的错误路径重定向
+@api.route('/media')
+def redirect_media_handler():
+    """处理/media?id=xxx格式的错误路径，重定向到正确的媒体API路径"""
+    fake_id = request.args.get('id')
+    if fake_id:
+        # 重定向到正确的媒体API路径
+        return redirect(f'/api/fake-knowledge/media/{fake_id}')
+    else:
+        return jsonify({
+            "success": False,
+            "error": "请提供正确的ID参数"
+        }), 400
 
 @api.route('/fake-news/search', methods=['GET'])
 def redirect_fake_news_search_handler():

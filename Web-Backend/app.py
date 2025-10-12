@@ -8,7 +8,6 @@ from flask_cors import CORS
 from config import Config
 from routes import api as api_blueprint
 #from services import nebula_service, search_service,mongodb_service,neo4j_service
-# 暂时注释掉search_service导入
 from services import neo4j_service
 from flask.json.provider import DefaultJSONProvider
 
@@ -45,7 +44,6 @@ def create_app():
     with app.app_context():
         # 根据需要启动相应服务
         #nebula_service.init_nebula_pool(app.config)
-        
         #search_service.init_search_clients(app.config)
         #mongodb_service.init_mongodb_pool(app.config)
         neo4j_service.init_neo4j_pool(app.config)
@@ -58,6 +56,18 @@ def create_app():
     @app.route('/uploads/<filename>')
     def uploaded_files(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    
+    # ✅ 添加：提供 fake/video 目录的静态文件访问
+    @app.route('/fake/video/<filename>')
+    def fake_video_files(filename):
+        fake_video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fake', 'video')
+        return send_from_directory(fake_video_dir, filename)
+    
+    # ✅ 添加：提供 fake/img 目录的静态文件访问
+    @app.route('/fake/img/<filename>')
+    def fake_img_files(filename):
+        fake_img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fake', 'img')
+        return send_from_directory(fake_img_dir, filename)
 
     app.logger.info("应用启动成功，运行在 http://127.0.0.1:5000")
     
