@@ -55,7 +55,7 @@
         <div class="flex flex-wrap gap-4 text-sm text-gray-500">
           <!-- 根据类型显示不同的发布者属性 -->
           <div><span class="font-medium">发布者:</span> {{ originalTweet.results[0].node_type === 'Retweet' ? originalTweet.results[0].src_v.name : originalTweet.results[0].src_v.uname }}</div>
-          <div><span class="font-medium">发布时间:</span> {{ formatDate(originalTweet.results[0].src_v.publishtimestamp) }}</div>
+          <div><span class="font-medium">发布时间:</span> {{ formatDate(originalTweet.results[0].node_type === 'Retweet' ? originalTweet.results[0].src_v.republishtime:originalTweet.results[0].src_v.publishtimestamp) }}</div>
           <div v-if="originalTweet.results[0].src_v.isrumor !== null" class="flex items-center">
             <span class="font-medium">类型:</span>
             <span 
@@ -426,7 +426,20 @@
         
         // 获取起始节点的详细信息 - 仅使用API返回的数据
         const centerNodeInfo = allNodesInfo.value.get(centerId);
-        const nodeName = centerNodeInfo?.all_properties?.text?.substring(0, 20) || '当前查询';
+        const centerNodeProps = centerNodeInfo?.all_properties || {};
+        // 与其他节点使用相同的名称设置逻辑
+        let nodeName;
+        if (centerNodeProps.content) {
+          nodeName = centerNodeProps.content.substring(0, 8) + '...';
+        } else if (centerNodeProps.retext) {
+          nodeName = centerNodeProps.retext.substring(0, 8) + '...';
+        } else if (centerNodeProps.title) {
+          nodeName = centerNodeProps.title.substring(0, 8) + '...';
+        } else if (centerNodeProps.text) {
+          nodeName = centerNodeProps.text.substring(0, 8) + '...';
+        } else {
+          nodeName = '节点';
+        }
         // 优化节点类型获取逻辑，处理不同格式的node_type数据
         let finalNodeType = 'Unknown';
         if (centerNodeInfo && centerNodeInfo.node_type) {
@@ -441,7 +454,7 @@
           id: centerId,
           name: nodeName,
           symbolSize: getNodeSizeByType(finalNodeType), // 使用动态大小
-          itemStyle: { color: getNodeColorByType(finalNodeType) }, // 使用动态颜色
+          itemStyle: { color: '#1E40AF' }, // 设置为深蓝色
           category: 0,
           originalData: {
             vid: centerId,
