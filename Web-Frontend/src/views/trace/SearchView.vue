@@ -136,6 +136,7 @@
                 <!-- <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">图片</th>
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">视频</th> -->
                 <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">是否为源头</th>
+                <th class="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">操作</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -146,11 +147,15 @@
                 <!-- 修改稿件列为全部可点击跳转 -->
                 <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
                   <a 
+                    v-if="item.originalDatasource && item.originalDatasource.includes('weibo')"
                     @click="switchToPathWithId({ id: item.id, event: item.event })" 
                     class="text-primary hover:text-primary/80 hover:underline cursor-pointer font-medium"
                   >
                     {{ item.content }}
                   </a>
+                  <span v-else class="text-gray-500">
+                    {{ item.content }}
+                  </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ item.datasource }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ item.uname }}</td>
@@ -174,6 +179,14 @@
                   >
                     {{ item.isSource ? '是' : '否' }}
                   </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                  <a 
+                    @click="viewDetail(item)"
+                    class="text-primary hover:text-primary/80 hover:underline cursor-pointer text-sm"
+                  >
+                    查看详情
+                  </a>
                 </td>
               </tr>
             </tbody>
@@ -204,18 +217,103 @@
       </div>
     </div>
 
-    <!-- 添加媒体查看模态框 -->
-    <div v-if="showImageModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-        <button @click="showImageModal = false" class="absolute top-4 right-4 text-white text-2xl">×</button>
-        <ImageShow :imageUrl="currentMediaUrl" @close="showImageModal = false" />
-      </div>
-    </div>
-
-    <div v-if="showVideoModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-        <button @click="showVideoModal = false" class="absolute top-4 right-4 text-white text-2xl">×</button>
-        <VideoShow :videoUrl="currentMediaUrl" @close="showVideoModal = false" />
+    <!-- 添加详情信息模态框 -->
+    <div v-if="showDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 class="text-lg font-medium text-gray-900">详情信息</h3>
+          <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div v-if="detailLoading" class="px-6 py-12 text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <p class="mt-2 text-gray-500">正在加载详情信息...</p>
+        </div>
+        <div v-else class="px-6 py-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm font-medium text-gray-500">ID</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.id || '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">标题</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.title || '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">内容</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.content || '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">发布时间</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.publishtime ? formatDate(selectedDetail.publishtime) : '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">事件</p>
+              <p class="mt-1 text-base text-gray-900">
+                <span v-if="!selectedDetail.event || selectedDetail.event === '暂无数据'">暂无数据</span>
+                <a 
+                  v-else 
+                  @click="goToEvent(selectedDetail.event)" 
+                  class="text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                >
+                  {{ selectedDetail.event }}
+                </a>
+              </p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">用户ID</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.uid || '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">用户名</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.uname || '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">是否为谣言</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.isrumor !== undefined ? (selectedDetail.isrumor ? '是' : '否') : '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">数据源</p>
+              <p class="mt-1 text-base text-gray-900">{{ displayedDatasource }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">是否为推文</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.istweet !== undefined ? (selectedDetail.istweet ? '是' : '否') : '暂无数据' }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-500">是否为转发</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.isretweet !== undefined ? (selectedDetail.isretweet ? '是' : '否') : '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">转发文本</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.retext || '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">图片ID</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.pic_ids || '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">图片URL</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.pic_urls || '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">视频ID</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.vid_ids || '暂无数据' }}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-sm font-medium text-gray-500">视频URL</p>
+              <p class="mt-1 text-base text-gray-900">{{ selectedDetail.vid_urls || '暂无数据' }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end">
+          <button @click="closeDetailModal" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+            关闭
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -231,7 +329,8 @@ import {
   searchTraceByText, 
   searchTraceByImage, 
   searchTraceByVideo, 
-  uploadFile 
+  uploadFile,
+  getStartNodeInfo
 } from '../../service/apiManager.js';
 import { formatDate } from '../../utils/date.js';
 
@@ -256,6 +355,18 @@ export default {
     const showImageModal = ref(false);
     const showVideoModal = ref(false);
     const currentMediaUrl = ref('')
+
+    // 详情信息相关变量
+    const showDetailModal = ref(false);
+    const selectedDetail = ref({});
+    const detailLoading = ref(false);
+
+    // 计算属性：将数据源中的weibo转换为微博
+    const displayedDatasource = computed(() => {
+      const datasource = selectedDetail.value.datasource;
+      if (!datasource) return '暂无数据';
+      return datasource.includes('weibo') ? '微博' : datasource;
+    });
     
     // 计算属性：根据内容类型返回当前值
     const currentValue = computed({
@@ -346,6 +457,7 @@ export default {
         // 统一处理所有类型查询结果中的平台名称替换
         const formattedResults = responseData.map(item => ({
           ...item,
+          originalDatasource: item.datasource, // 添加这一行：保存原始datasource值
           datasource: item.datasource === 'weibo' ? '微博' : item.datasource
         }));
 
@@ -369,6 +481,15 @@ export default {
       currentMediaUrl.value = url;
       showVideoModal.value = true;
     };
+
+    // 跳转到事件页面
+    const goToEvent = (event) => {
+      router.push({
+        path: '/event',
+        query: { event: event }
+      });
+    };
+
     const closeModal = () => {
       showImageModal.value = false;
       showVideoModal.value = false;
@@ -421,6 +542,42 @@ export default {
       }
     };
 
+    // 查看详情方法
+    const viewDetail = async (item) => {
+      detailLoading.value = true;
+      showDetailModal.value = true;
+      selectedDetail.value = {};
+      
+      try {
+        // 调用API获取详情信息
+        const response = await getStartNodeInfo(item.id, 'Social_Network_1');
+        // 确保正确处理响应数据，根据PathView.vue中的使用方式
+        if (response && response.data && response.data.results) {
+          // 如果API返回了数据，使用API返回的数据
+          selectedDetail.value = {
+            ...item, // 保留表格中的数据
+            ...response.data.results, // 覆盖API返回的数据
+            ...response.data.results.all_properties // 如果有all_properties，也合并进去
+          };
+        } else {
+          selectedDetail.value = item; // 如果API没有返回数据，使用表格中的数据
+        }
+      } catch (error) {
+        console.error('获取详情信息失败:', error);
+        // 即使出错也显示表格中的数据
+        selectedDetail.value = item;
+        traceStore.setErrorMessage('获取详情信息失败: ' + (error.response?.data?.error || error.message));
+      } finally {
+        detailLoading.value = false;
+      }
+    };
+
+    // 关闭详情模态框
+    const closeDetailModal = () => {
+      showDetailModal.value = false;
+      selectedDetail.value = {};
+    };
+
     return {
       queryContent,
       contentType,
@@ -429,6 +586,7 @@ export default {
       threshold,
       topK,
       currentValue,  // 计算属性：用于v-model绑定
+      displayedDatasource,
       executeSearch,
       onDragOver,
       onDragLeave,
@@ -443,6 +601,13 @@ export default {
       currentMediaUrl, // 存储当前预览的媒体URL
       closeModal,
       traceStore, // 添加store引用
+      // 详情信息相关
+      showDetailModal,
+      selectedDetail,
+      detailLoading,
+      viewDetail,
+      closeDetailModal,
+      goToEvent, 
       // 从store中解构所需的状态和方法
       ...traceStore
     };
@@ -454,6 +619,17 @@ export default {
 /* 原内容样式适配 */
 .search-view {
   width: 100%;
+}
+
+/* 模态框样式调整 */
+.fixed.inset-0 {
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.modal-container {
+  max-height: 80vh;
+  margin: 1rem auto;
 }
 
 .query-button {

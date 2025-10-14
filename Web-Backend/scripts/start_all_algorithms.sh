@@ -4,7 +4,7 @@
 echo "🚀 启动所有算法模块..."
 
 # 初始化conda
-source /home/lihr/anaconda3/etc/profile.d/conda.sh
+source /data/anaconda3/etc/profile.d/conda.sh
 
 # 定义算法模块配置：模块名->端口
 declare -A ALGORITHMS=(
