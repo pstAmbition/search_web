@@ -46,12 +46,14 @@ def init_mongodb_pool(app_config):
         # 初始化MongoDB连接池，增加超时时间和优化连接设置
         mongodb_pool = pymongo.MongoClient(
             connection_string,
-            serverSelectionTimeoutMS=30000,  # 增加到30秒
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000,
-            maxPoolSize=20,  # 增加连接池大小
-            minPoolSize=5,
-            waitQueueTimeoutMS=30000
+            serverSelectionTimeoutMS=60000,  # 增加到60秒
+            connectTimeoutMS=60000,
+            socketTimeoutMS=60000,
+            maxPoolSize=50,  # 增加连接池大小
+            minPoolSize=10,
+            waitQueueTimeoutMS=60000,
+            retryWrites=True,  # 启用写重试
+            retryReads=True    # 启用读重试
         )
         
         print("MongoDB连接池对象创建成功，准备验证连接...")
@@ -67,7 +69,15 @@ def init_mongodb_pool(app_config):
         
         mongo_collection_obj = mongo_db[mongo_collection]
         print(f"成功访问集合: {mongo_collection}")
-        
+        # 在连接 MongoDB 后执行
+        try:
+            mongo_collection_obj.create_index(
+                "Event",
+                background=True  # 后台创建，不阻塞
+            )
+            print("已确保 Event 字段的索引存在")
+        except Exception as e:
+            print(f"创建索引失败: {e}")
         # 测试查询一个文档
         try:
             first_document = mongo_collection_obj.find_one()
@@ -94,26 +104,6 @@ def init_mongodb_pool(app_config):
         print(f"初始化MongoDB连接池时发生其他错误: {e}")
         logger.error(f"连接MongoDB失败: {e}")
         return False
-
-
-def rebuild_indices(app_config):
-    """重建MongoDB索引"""
-    try:
-        if not mongodb_pool:
-            logger.error("MongoDB连接池未初始化，无法重建索引")
-            return
-        
-        # 创建或重建必要的索引
-        # 这里可以根据实际需求添加更多索引
-        mongo_collection_obj.create_index([("Time", -1)])  # 按时间倒序索引
-        mongo_collection_obj.create_index([("Source", 1)])  # 按来源索引
-        mongo_collection_obj.create_index([("Title", "text")])  # 全文索引
-        
-        logger.info("MongoDB索引重建成功")
-        
-    except Exception as e:
-        logger.error(f"MongoDB重建索引失败: {e}")
-
 
 class JSONEncoder(json.JSONEncoder):
     """用于处理ObjectId和其他MongoDB特殊类型的JSON编码器"""
@@ -145,39 +135,6 @@ def _check_connection():
         return False
 
 
-def _prepare_event_data(event_data):
-    """准备事件数据，确保格式正确"""
-    # 创建一个副本以避免修改原始数据
-    data = event_data.copy()
-    
-    # 处理时间字段
-    if 'Time' in data and isinstance(data['Time'], str):
-        try:
-            # 尝试解析时间字符串
-            datetime.strptime(data['Time'], '%Y-%m-%d %H:%M')
-        except ValueError:
-            # 如果解析失败，设置为当前时间
-            data['Time'] = datetime.now().strftime('%Y-%m-%d %H:%M')
-    
-    # 确保isRisk字段是布尔值
-    if 'isRisk' in data:
-        if isinstance(data['isRisk'], str):
-            data['isRisk'] = data['isRisk'].lower() == 'true'
-        elif not isinstance(data['isRisk'], bool):
-            data['isRisk'] = bool(data['isRisk'])
-    
-    # 确保数值字段是数字
-    numeric_fields = ['Comment', 'Reblog', 'Praise']
-    for field in numeric_fields:
-        if field in data:
-            try:
-                data[field] = int(data[field])
-            except (ValueError, TypeError):
-                data[field] = 0
-    
-    return data
-
-
 def _convert_objectid_to_string(data):
     """将数据中的ObjectId转换为字符串"""
     if isinstance(data, dict):
@@ -191,36 +148,6 @@ def _convert_objectid_to_string(data):
     elif isinstance(data, ObjectId):
         return str(data)
     return data
-
-
-def insert_event(event_data):
-    """插入单个事件数据"""
-    if not _check_connection():
-        return None
-    
-    try:
-        # 确保数据格式正确
-        event = _prepare_event_data(event_data)
-        result = mongo_collection_obj.insert_one(event)
-        return str(result.inserted_id)
-    except Exception as e:
-        logger.error(f"插入事件数据失败: {e}")
-        return None
-
-
-def insert_events(events_data):
-    """批量插入事件数据"""
-    if not _check_connection():
-        return []
-    
-    try:
-        # 确保数据格式正确
-        events = [_prepare_event_data(event) for event in events_data]
-        result = mongo_collection_obj.insert_many(events)
-        return [str(id) for id in result.inserted_ids]
-    except Exception as e:
-        logger.error(f"批量插入事件数据失败: {e}")
-        return []
 
 
 def get_event_by_id(event_id):
@@ -245,12 +172,16 @@ def get_event_by_id(event_id):
         return None
 
 
-def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-1):
+def search_events(query=None, page=1, page_size=100, sort_by='Time', sort_order=-1, is_export=False, streaming=False):
     """搜索事件数据，增加重试机制和性能优化"""
+    logger.info(f"调用search_events: query={query}, page={page}, page_size={page_size}, is_export={is_export}, streaming={streaming}")
+    
     if not _check_connection():
+        logger.warning("MongoDB连接不可用，返回空结果")
         return [], 0
     
-    max_retries = 3  # 最多重试3次
+    # 保持一致的重试次数设置
+    max_retries = 3  # 所有请求都重试3次
     retry_count = 0
     
     while retry_count < max_retries:
@@ -258,7 +189,9 @@ def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-
             # 构建查询条件
             search_query = query or {}
             
-            # 特别处理isRisk字段，支持同时查询布尔值和字符串类型
+            logger.info(f"执行查询: search_query={search_query}")
+            
+
             if 'isRisk' in search_query:
                 is_risk_value = search_query['isRisk']
                 # 如果查询条件是布尔值，同时查询布尔值和对应的字符串
@@ -279,12 +212,33 @@ def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-
             skip = (page - 1) * page_size
             
             # 优化：限制页面大小，避免一次性查询过多数据
-            if page_size > 1000:
+            if not is_export and page_size > 1000:
                 page_size = 1000
                 logger.warning(f"页面大小过大，已限制为1000")
+            # 导出时可以获取更多数据，但仍设置合理上限
+            elif is_export and page_size > 50000:
+                page_size = 50000
+                logger.info(f"导出模式，页面大小限制为50000")
             
-            # 执行查询，使用hint强制走合适的索引
-            cursor = mongo_collection_obj.find(search_query)
+            # 执行查询，导出模式下只选择需要的字段以提高性能
+            if is_export:
+                # 导出时只选择必要的字段，提高查询速度
+                projection = {
+                    '_id': 0,  # 不包含_id
+                    'Event': 1,
+                    'Time': 1,
+                    'platform': 1,
+                    'region': 1,
+                    'content': 1,
+                    'isRisk': 1,
+                    # 可以根据实际需要添加更多字段
+                }
+                logger.info(f"导出模式，使用投影: {projection}")
+                cursor = mongo_collection_obj.find(search_query, projection)
+            else:
+                cursor = mongo_collection_obj.find(search_query)
+                
+            logger.info("查询执行成功，获取到游标")
             
             # 排序 - 只对需要的字段排序
             if sort_by:
@@ -294,7 +248,16 @@ def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-
                     logger.warning(f"排序失败，使用默认排序: {e}")
             
             # 分页
-            events = list(cursor.skip(skip).limit(page_size))
+            cursor = cursor.skip(skip).limit(page_size)
+            
+            # 如果是流式处理模式，直接返回游标（注意：需要在外部处理）
+            if streaming:
+                logger.info(f"返回流式游标: search_query={search_query}, skip={skip}, limit={page_size}")
+                return cursor, None
+            
+            # 非流式处理，正常转换数据
+            events = list(cursor)
+            logger.info(f"非流式处理获取到 {len(events)} 条数据")
             
             # 转换ObjectId为字符串
             events = [_convert_objectid_to_string(event) for event in events]
@@ -304,13 +267,22 @@ def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-
                 # 对于空查询（获取所有数据），使用更高效的estimated_document_count
                 if not search_query:
                     total_count = mongo_collection_obj.estimated_document_count()
+                    logger.info(f"使用estimated_document_count获取总数: {total_count}")
                 else:
                     # 对于复杂查询，使用count_documents获取准确总数
                     # 虽然性能可能略差，但能确保分页显示正确
                     total_count = mongo_collection_obj.count_documents(search_query)
+                    logger.info(f"使用count_documents获取总数: {total_count}")
             except Exception as e:
-                logger.warning(f"获取总数失败，使用结果数量作为估计值: {e}")
-                total_count = len(events)
+                logger.warning(f"获取总数失败: {e}")
+                # 改进：不再使用当前页结果数量作为总数，这样会导致分页错误
+                # 而是返回一个保守的估计值，确保分页控件能正常工作
+                # 如果当前有结果，返回一个较大的估计值，确保分页功能可用
+                if events:
+                    total_count = 1000  # 设置一个较大的估计值，确保分页功能可用
+                    logger.warning(f"使用保守估计的总数: {total_count}")
+                else:
+                    total_count = 0
             
             return events, total_count
         except (ServerSelectionTimeoutError, ConnectionFailure) as e:
@@ -320,100 +292,16 @@ def search_events(query=None, page=1, page_size=10, sort_by='Time', sort_order=-
                 logger.error(f"搜索事件数据失败，已达到最大重试次数: {e}")
                 # 返回空列表和0，前端可以处理这种情况
                 return [], 0
-            # 重试前等待一段时间
+            # 重试前等待一段时间，使用指数退避策略
             import time
-            time.sleep(1)
+            wait_time = 1 * (2 ** retry_count)  # 指数退避：1s, 2s, 4s, 8s...
+            if wait_time > 10:  # 最大等待时间不超过10秒
+                wait_time = 10
+            logger.info(f"等待{wait_time}秒后重试")
+            time.sleep(wait_time)
         except Exception as e:
             logger.error(f"搜索事件数据失败: {e}")
             return [], 0
-
-
-def update_event(event_id, update_data):
-    """更新事件数据"""
-    if not _check_connection():
-        return False
-    
-    try:
-        # 尝试将字符串ID转换为ObjectId
-        try:
-            obj_id = ObjectId(event_id)
-            result = mongo_collection_obj.update_one({'_id': obj_id}, {'$set': update_data})
-        except:
-            result = mongo_collection_obj.update_one({'_id': event_id}, {'$set': update_data})
-            
-        return result.modified_count > 0
-    except Exception as e:
-        logger.error(f"更新事件数据失败: {e}")
-        return False
-
-
-def delete_event(event_id):
-    """删除事件数据"""
-    if not _check_connection():
-        return False
-    
-    try:
-        # 尝试将字符串ID转换为ObjectId
-        try:
-            obj_id = ObjectId(event_id)
-            result = mongo_collection_obj.delete_one({'_id': obj_id})
-        except:
-            result = mongo_collection_obj.delete_one({'_id': event_id})
-            
-        return result.deleted_count > 0
-    except Exception as e:
-        logger.error(f"删除事件数据失败: {e}")
-        return False
-
-
-def export_to_json(file_path, query=None):
-    """导出数据到JSON文件"""
-    if not _check_connection():
-        return False
-    
-    try:
-        events, _ = search_events(query)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(events, f, ensure_ascii=False, cls=JSONEncoder, indent=2)
-        return True
-    except Exception as e:
-        logger.error(f"导出数据到JSON文件失败: {e}")
-        return False
-
-
-def import_from_json(file_path):
-    """从JSON文件导入数据"""
-    if not _check_connection():
-        return False, 0
-    
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            events = json.load(f)
-            
-        # 确保是列表格式
-        if not isinstance(events, list):
-            events = [events]
-            
-        # 插入数据
-        inserted_ids = insert_events(events)
-        return True, len(inserted_ids)
-    except Exception as e:
-        logger.error(f"从JSON文件导入数据失败: {e}")
-        return False, 0
-
-
-def create_index(field, unique=False):
-    """创建索引以提高查询性能"""
-    if not _check_connection():
-        return False
-    
-    try:
-        mongo_collection_obj.create_index(field, unique=unique)
-        return True
-    except Exception as e:
-        logger.error(f"创建索引失败: {e}")
-        return False
-
 
 def get_statistics():
     """获取数据库统计信息"""
@@ -454,6 +342,138 @@ def get_statistics():
             'avg_document_size': 0
         }
 
+def get_all_events_query(params=None):
+    """构建获取所有事件的查询条件"""
+    try:
+        # 确保params不为None
+        params = params or {}
+        
+        # 获取查询参数
+        platform = params.get('platform', '')
+        region = params.get('region', '')
+        start_time = params.get('start_time', '')
+        end_time = params.get('end_time', '')
+        keyword = params.get('keyword', '')
+        
+        # 构建查询条件
+        query = {}
+        conditions = []
+        
+        # 如果提供了平台参数，添加到查询条件中
+        if platform:
+            conditions.append({"platform": platform})
+        
+        # 如果提供了region参数，添加到查询条件中
+        if region:
+            conditions.append({"region": region})
+        
+        # 处理时间范围查询，支持按年月筛选 (格式：YYYY-MM)
+        if start_time:
+            if len(start_time) == 7 and start_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月第一天
+                year_month = start_time
+                # 直接使用日期范围查询，不使用正则匹配
+                conditions.append({"Time": {"$gte": f"{year_month}-01 00:00"}})
+            else:
+                conditions.append({"Time": {"$gte": start_time}})
+        if end_time:
+            if len(end_time) == 7 and end_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月最后一天
+                year_month = end_time
+                # 解析年月
+                year, month = map(int, year_month.split('-'))
+                # 计算当月最后一天
+                if month == 12:
+                    last_day = 31
+                else:
+                    last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+                # 直接使用日期范围查询，不使用正则匹配
+                conditions.append({"Time": {"$lte": f"{year_month}-{last_day} 23:59"}})
+            else:
+                conditions.append({"Time": {"$lte": end_time}})
+        
+        # 如果提供了关键词参数，添加到查询条件中（不区分大小写）
+        if keyword:
+            # 改为前缀匹配，确保能用索引
+            conditions.append({"Event": {"$regex": f"^{keyword}", "$options": "i"}})
+        
+        # 组合查询条件
+        if len(conditions) > 0:
+            if len(conditions) > 1:
+                query = {"$and": conditions}
+            else:
+                query = conditions[0]
+        
+        return query
+    except Exception as e:
+        logger.error(f"构建查询条件失败: {e}")
+        return {}
+
+
+def get_risk_events_query(params=None):
+    """构建获取风险事件的查询条件"""
+    try:
+        # 确保params不为None
+        params = params or {}
+        
+        # 获取查询参数
+        platform = params.get('platform', '')
+        region = params.get('region', '')
+        start_time = params.get('start_time', '')
+        end_time = params.get('end_time', '')
+        keyword = params.get('keyword', '')
+        
+        # 构建查询条件，只获取isRisk=true的事件（true是以字符串形式存储）
+        conditions = [{"isRisk": "true"}]
+        
+        # 如果提供了平台参数，添加到查询条件中
+        if platform:
+            conditions.append({"platform": platform})
+            
+        # 如果提供了region参数，添加到查询条件中
+        if region:
+            conditions.append({"region": region})
+        
+        # 处理时间范围查询，支持按年月筛选 (格式：YYYY-MM)
+        if start_time:
+            if len(start_time) == 7 and start_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月第一天
+                year_month = start_time
+                # 直接使用日期范围查询，不使用正则匹配
+                conditions.append({"Time": {"$gte": f"{year_month}-01 00:00"}})
+            else:
+                conditions.append({"Time": {"$gte": start_time}})
+        if end_time:
+            if len(end_time) == 7 and end_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
+                # 年月格式，设置为当月最后一天
+                year_month = end_time
+                # 解析年月
+                year, month = map(int, year_month.split('-'))
+                # 计算当月最后一天
+                if month == 12:
+                    last_day = 31
+                else:
+                    last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+                # 直接使用日期范围查询，不使用正则匹配
+                conditions.append({"Time": {"$lte": f"{year_month}-{last_day} 23:59"}})
+            else:
+                conditions.append({"Time": {"$lte": end_time}})
+        
+        # 如果提供了关键词参数，添加到查询条件中（不区分大小写）
+        if keyword:
+            # 改为前缀匹配，确保能用索引
+            conditions.append({"Event": {"$regex": f"^{keyword}", "$options": "i"}})
+        
+        # 组合查询条件
+        if len(conditions) > 1:
+            query = {"$and": conditions}
+        else:
+            query = conditions[0]
+        
+        return query
+    except Exception as e:
+        logger.error(f"构建风险事件查询条件失败: {e}")
+        return {"isRisk": "true"}
 
 def get_dashboard_metrics():    
     """获取仪表盘指标数据，高效查询真实数据"""
@@ -813,315 +833,3 @@ def get_dashboard_metrics():
         logger.error(f"获取仪表盘指标失败: {e}")
         return {'error': str(e), 'db_status': 'error'}
 
-
-
-def get_all_events_query(params=None):
-    """构建获取所有事件的查询条件"""
-    try:
-        # 确保params不为None
-        params = params or {}
-        
-        # 获取查询参数
-        platform = params.get('platform', '')
-        region = params.get('region', '')
-        start_time = params.get('start_time', '')
-        end_time = params.get('end_time', '')
-        keyword = params.get('keyword', '')
-        
-        # 构建查询条件
-        query = {}
-        conditions = []
-        
-        # 如果提供了平台参数，添加到查询条件中
-        if platform:
-            conditions.append({"platform": platform})
-        
-        # 如果提供了region参数，添加到查询条件中
-        if region:
-            conditions.append({"region": region})
-        
-        # 处理时间范围查询，支持按年月筛选 (格式：YYYY-MM)
-        if start_time:
-            if len(start_time) == 7 and start_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
-                # 年月格式，设置为当月第一天
-                year_month = start_time
-                # 直接使用日期范围查询，不使用正则匹配
-                conditions.append({"Time": {"$gte": f"{year_month}-01 00:00"}})
-            else:
-                conditions.append({"Time": {"$gte": start_time}})
-        if end_time:
-            if len(end_time) == 7 and end_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
-                # 年月格式，设置为当月最后一天
-                year_month = end_time
-                # 解析年月
-                year, month = map(int, year_month.split('-'))
-                # 计算当月最后一天
-                if month == 12:
-                    last_day = 31
-                else:
-                    last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
-                # 直接使用日期范围查询，不使用正则匹配
-                conditions.append({"Time": {"$lte": f"{year_month}-{last_day} 23:59"}})
-            else:
-                conditions.append({"Time": {"$lte": end_time}})
-        
-        # 如果提供了关键词参数，添加到查询条件中（不区分大小写）
-        if keyword:
-            conditions.append({"Event": {"$regex": keyword, "$options": "i"}})
-        
-        # 组合查询条件
-        if len(conditions) > 0:
-            if len(conditions) > 1:
-                query = {"$and": conditions}
-            else:
-                query = conditions[0]
-        
-        return query
-    except Exception as e:
-        logger.error(f"构建查询条件失败: {e}")
-        return {}
-
-
-def get_risk_events_query(params=None):
-    """构建获取风险事件的查询条件"""
-    try:
-        # 确保params不为None
-        params = params or {}
-        
-        # 获取查询参数
-        platform = params.get('platform', '')
-        region = params.get('region', '')
-        start_time = params.get('start_time', '')
-        end_time = params.get('end_time', '')
-        keyword = params.get('keyword', '')
-        
-        # 构建查询条件，只获取isRisk=true的事件（true是以字符串形式存储）
-        conditions = [{"isRisk": "true"}]
-        
-        # 如果提供了平台参数，添加到查询条件中
-        if platform:
-            conditions.append({"platform": platform})
-            
-        # 如果提供了region参数，添加到查询条件中
-        if region:
-            conditions.append({"region": region})
-        
-        # 处理时间范围查询，支持按年月筛选 (格式：YYYY-MM)
-        if start_time:
-            if len(start_time) == 7 and start_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
-                # 年月格式，设置为当月第一天
-                year_month = start_time
-                # 直接使用日期范围查询，不使用正则匹配
-                conditions.append({"Time": {"$gte": f"{year_month}-01 00:00"}})
-            else:
-                conditions.append({"Time": {"$gte": start_time}})
-        if end_time:
-            if len(end_time) == 7 and end_time[4] == '-':  # 检查是否是年月格式 (YYYY-MM)
-                # 年月格式，设置为当月最后一天
-                year_month = end_time
-                # 解析年月
-                year, month = map(int, year_month.split('-'))
-                # 计算当月最后一天
-                if month == 12:
-                    last_day = 31
-                else:
-                    last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
-                # 直接使用日期范围查询，不使用正则匹配
-                conditions.append({"Time": {"$lte": f"{year_month}-{last_day} 23:59"}})
-            else:
-                conditions.append({"Time": {"$lte": end_time}})
-        
-        # 如果提供了关键词参数，添加到查询条件中（不区分大小写）
-        if keyword:
-            conditions.append({"Event": {"$regex": keyword, "$options": "i"}})
-        
-        # 组合查询条件
-        if len(conditions) > 1:
-            query = {"$and": conditions}
-        else:
-            query = conditions[0]
-        
-        return query
-    except Exception as e:
-        logger.error(f"构建风险事件查询条件失败: {e}")
-        return {"isRisk": "true"}
-
-
-def execute_query(query_type, params=None):
-    """执行查询操作，与db_adapter.py保持兼容性"""
-    if not _check_connection():
-        return {'error': 'MongoDB未连接'}
-
-    try:
-        # 确保params不为None
-        params = params or {}
-
-        if query_type == 'getEventsByKeyword':
-            # 根据关键词获取事件列表
-            keyword = params.get('keyword', '')
-            limit = params.get('limit', 100)  # 增加默认限制
-            offset = params.get('offset', 0)
-            
-            # 构建查询条件
-            search_query = {}
-            if keyword:
-                search_query = {'Event': {'$regex': keyword, '$options': 'i'}}
-            
-            # 计算页码
-            page = 1
-            if offset > 0 and limit > 0:
-                page = (offset // limit) + 1
-            
-            # 执行查询
-            events, total = search_events(
-                search_query, 
-                page=page, 
-                page_size=limit,
-                sort_by='Time',
-                sort_order=-1
-            )
-            
-            return {'events': events, 'total': total}
-        
-        elif query_type == 'getEventDetail':
-            # 获取事件详情
-            event_id = params.get('event_id')
-            if not event_id:
-                return {'error': '缺少事件ID'}
-            
-            event = get_event_by_id(event_id)
-            return event if event else None
-        
-        elif query_type == 'getRelatedEvents':
-            # 获取相关事件
-            event_id = params.get('event_id')
-            limit = params.get('limit', 5)
-            
-            if not event_id:
-                return {'error': '缺少事件ID'}
-            
-            # 首先获取当前事件
-            current_event = get_event_by_id(event_id)
-            
-            if not current_event:
-                return {'events': [], 'total': 0}
-            
-            # 提取关键词（这里简化处理，实际应用可能需要更复杂的文本分析）
-            keywords = []
-            if 'Event' in current_event:
-                keywords.extend(current_event['Event'].split())
-            if 'Content' in current_event:
-                keywords.extend(current_event['Content'].split())
-            
-            # 构建查询条件，排除当前事件
-            search_query = {
-                '_id': {'$ne': current_event['_id']},
-                '$or': [
-                    {'Event': {'$in': keywords}},
-                    {'Content': {'$in': keywords}}
-                ]
-            }
-            
-            # 执行查询
-            events, total = search_events(
-                search_query,
-                page=1,
-                page_size=limit,
-                sort_by='Time',
-                sort_order=-1
-            )
-            
-            return {'events': events, 'total': total}
-        
-        elif query_type == 'searchEvents':
-            # 高级搜索事件
-            keywords = params.get('keywords', [])
-            date_range = params.get('date_range', {})
-            sources = params.get('sources', [])
-            categories = params.get('categories', [])
-            limit = params.get('limit', 100)  # 增加默认限制
-            offset = params.get('offset', 0)
-            
-            # 计算页码
-            page = 1
-            if offset > 0 and limit > 0:
-                page = (offset // limit) + 1
-            
-            # 构建查询条件
-            search_query = {}
-            conditions = []
-            
-            # 处理关键词
-            if keywords:
-                keyword_conditions = []
-                for keyword in keywords:
-                    keyword_conditions.append({
-                        '$or': [
-                            {'Event': {'$regex': keyword, '$options': 'i'}},
-                            {'Content': {'$regex': keyword, '$options': 'i'}}
-                        ]
-                    })
-                if len(keyword_conditions) > 1:
-                    conditions.append({'$and': keyword_conditions})
-                elif keyword_conditions:
-                    conditions.append(keyword_conditions[0])
-            
-            # 处理日期范围
-            if date_range.get('start'):
-                conditions.append({'Time': {'$gte': date_range['start']}})
-            if date_range.get('end'):
-                conditions.append({'Time': {'$lte': date_range['end']}})
-            
-            # 处理来源
-            if sources:
-                conditions.append({'Source': {'$in': sources}})
-            
-            # 处理分类
-            if categories:
-                conditions.append({'Category': {'$in': categories}})
-            
-            # 组合查询条件
-            if len(conditions) > 1:
-                search_query = {'$and': conditions}
-            elif conditions:
-                search_query = conditions[0]
-            
-            # 执行查询
-            events, total = search_events(
-                search_query,
-                page=page,
-                page_size=limit,
-                sort_by='Time',
-                sort_order=-1
-            )
-            
-            return {'events': events, 'total': total}
-        
-        elif query_type.startswith('custom:'):
-            # 自定义查询，这里是一个示例，实际应用可能需要更复杂的处理
-            custom_query = params.get('query', {})
-            limit = params.get('limit', 100)  # 增加默认限制
-            offset = params.get('offset', 0)
-            
-            # 计算页码
-            page = 1
-            if offset > 0 and limit > 0:
-                page = (offset // limit) + 1
-            
-            results, total = search_events(
-                custom_query,
-                page=page,
-                page_size=limit
-            )
-            
-            return {'items': results, 'total': total}
-        
-        else:
-            # 默认查询，直接传递给search_events方法
-            results, total = search_events(query_type)
-            
-            return results
-        
-    except Exception as e:
-        logging.error(f"MongoDB查询错误: {str(e)}")
-        return {'error': str(e)}
