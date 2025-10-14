@@ -503,7 +503,7 @@ export default {
         graphData.value = {
           results: [
             {
-              e_src: 'source_' + fakeId.value,
+              e_src: fakeId.value,
               e_dst: 'node_1',
               e_type: 'spread_to',
               src_type: 'Fake_Article',
@@ -600,8 +600,8 @@ export default {
       // 设置默认图谱数据
       graphData.value = {
         results: [
-          {              
-            e_src: 'source_default',
+          {               
+            e_src: 'default',
             e_dst: 'user_1',
             e_type: 'spread_to',
             src_type: 'Fake_Article',
@@ -785,8 +785,8 @@ export default {
       const nodeTypes = new Map();
       let nextCategoryId = 0;
     
-      // 中心虚假信息节点ID
-      let centerFakeId = 'source_' + fakeId.value;
+      // 中心虚假信息节点ID，直接使用原始fakeId值
+      let centerFakeId = fakeId.value;
       
       // 查找实际的INFO节点ID
       graphData.value.results.forEach((item) => {

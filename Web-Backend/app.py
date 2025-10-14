@@ -1,5 +1,4 @@
 # /unified_service/app.py
-
 import os
 import logging
 import config
@@ -25,6 +24,13 @@ def create_app():
     # 1. 加载配置
     app.config.from_object(config.Config)
     app.config.from_object(Config)
+    
+    # 确保静态文件目录配置被正确加载
+    # 如果Config类中的属性没有自动加载到app.config中，这里进行手动添加
+    if 'fake_video_dir' not in app.config:
+        app.config['fake_video_dir'] = Config.fake_video_dir
+    if 'fake_img_dir' not in app.config:
+        app.config['fake_img_dir'] = Config.fake_img_dir
     # 全局替换 JSONProvider
     app.json = CustomJSONProvider(app)
     
@@ -57,17 +63,17 @@ def create_app():
     def uploaded_files(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     
-    # ✅ 添加：提供 fake/video 目录的静态文件访问
+    # ✅ 添加：提供 fake/video 目录的静态文件访问（使用配置文件中的路径）
     @app.route('/fake/video/<filename>')
     def fake_video_files(filename):
-        fake_video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fake', 'video')
-        return send_from_directory(fake_video_dir, filename)
+        # 直接使用配置文件中定义的路径，便于部署时修改
+        return send_from_directory(app.config['fake_video_dir'], filename)
     
-    # ✅ 添加：提供 fake/img 目录的静态文件访问
+    # ✅ 添加：提供 fake/img 目录的静态文件访问（使用配置文件中的路径）
     @app.route('/fake/img/<filename>')
     def fake_img_files(filename):
-        fake_img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fake', 'img')
-        return send_from_directory(fake_img_dir, filename)
+        # 直接使用配置文件中定义的路径，便于部署时修改
+        return send_from_directory(app.config['fake_img_dir'], filename)
 
     app.logger.info("应用启动成功，运行在 http://127.0.0.1:5000")
     

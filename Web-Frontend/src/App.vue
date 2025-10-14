@@ -22,14 +22,9 @@
         <div class="content-wrapper">
           <!-- 使用keep-alive缓存需要保留状态的路由组件 -->
           <!-- 为SearchView使用固定key以确保状态保留 -->
-          <router-view v-slot="{ Component }">
-            <keep-alive :include="['SearchView', 'PathView', 'EventView']">
-              <component 
-                :is="Component" 
-                :key="$route.name === 'Search' ? 'search-view' : ($route.name === 'Event' ? 'event-view' : $route.fullPath)" 
-              />
-            </keep-alive>
-          </router-view>
+          <keep-alive :include="['SearchView', 'PathView', 'EventView']">
+            <router-view :key="$route.name === 'Search' ? 'search-view' : ($route.name === 'Event' ? 'event-view' : $route.fullPath)" />
+          </keep-alive>
         </div>
       </main>
     </div>
@@ -108,7 +103,7 @@ export default {
       } else if (newRouteName === 'Detection') {  // 新增这一行
         activeTab.value = 'detection';  // 新增这一行
       } else {
-        activeTab.value = newRouteName ? newRouteName.toLowerCase() : '';
+        activeTab.value = newRouteName.toLowerCase();
       }
     });
     
