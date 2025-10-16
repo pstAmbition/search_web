@@ -305,6 +305,10 @@ export default {
         console.log('- platform_counts:', metrics.value.platform_counts);
         console.log('- language_counts:', metrics.value.language_counts);
         
+        // 保存数据到缓存
+        setCachedData(realMetrics);
+        console.log('数据已保存到缓存');
+        
         // 数据更新完成，无需额外渲染图表，Vue的响应式系统会自动更新表格显示
       } catch (err) {
         console.error('Failed to fetch dashboard metrics:', {
@@ -326,21 +330,80 @@ export default {
       // 无需特殊处理，Vue会自动清理
     });
     
+    // 数据缓存相关
+    const CACHE_KEY = 'dashboard_metrics_cache';
+    const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
+    
+    // 检查缓存是否有效
+    const isCacheValid = () => {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (!cached) return false;
+      
+      try {
+        const { timestamp, data } = JSON.parse(cached);
+        return Date.now() - timestamp < CACHE_DURATION;
+      } catch {
+        return false;
+      }
+    };
+    
+    // 获取缓存数据
+    const getCachedData = () => {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (!cached) return null;
+      
+      try {
+        const { data } = JSON.parse(cached);
+        return data;
+      } catch {
+        return null;
+      }
+    };
+    
+    // 设置缓存数据
+    const setCachedData = (data) => {
+      const cacheData = {
+        timestamp: Date.now(),
+        data: data
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    };
+    
     // 组件挂载时获取数据
     onMounted(() => {
       // 等待DOM完全渲染后再获取数据
       nextTick(() => {
         setTimeout(() => {
+          // 检查缓存是否有效
+          if (isCacheValid()) {
+            console.log('使用缓存数据');
+            const cachedData = getCachedData();
+            if (cachedData) {
+              Object.assign(metrics.value, cachedData);
+              loading.value = false;
+              return;
+            }
+          }
+          
+          // 缓存无效或不存在，重新获取数据
           fetchDashboardMetrics();
         }, 500); // 延迟500ms确保DOM完全渲染
       });
     });
+    
+    // 手动刷新数据（忽略缓存）
+    const refreshData = () => {
+      console.log('手动刷新数据，忽略缓存');
+      loading.value = true;
+      fetchDashboardMetrics();
+    };
     
     return {
       metrics,
       loading,
       error,
       fetchDashboardMetrics,
+      refreshData,
       formatNumber
     };
   }

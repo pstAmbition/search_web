@@ -22,7 +22,7 @@
         <div class="content-wrapper">
           <!-- 使用keep-alive缓存需要保留状态的路由组件 -->
           <!-- 为SearchView使用固定key以确保状态保留 -->
-          <keep-alive :include="['SearchView', 'PathView', 'EventView']">
+          <keep-alive :include="['SearchView', 'PathView', 'EventView', 'DashboardView', 'FakeView']">
             <router-view :key="$route.name === 'Search' ? 'search-view' : ($route.name === 'Event' ? 'event-view' : $route.fullPath)" />
           </keep-alive>
         </div>

@@ -21,6 +21,24 @@ module.exports = {
         onProxyRes: function(proxyRes, req, res) {
           console.log('Proxy response status:', proxyRes.statusCode, 'for', req.url);
         }
+      },
+      '/fake': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        ws: true,
+        secure: false,
+        pathRewrite: {
+          '^/fake': '/fake'
+        },
+        headers: {
+          Connection: 'keep-alive'
+        },
+        onProxyReq: function(proxyReq, req, res) {
+          console.log('Proxying fake request:', req.method, req.url);
+        },
+        onProxyRes: function(proxyRes, req, res) {
+          console.log('Proxy fake response status:', proxyRes.statusCode, 'for', req.url);
+        }
       }
     },
     port: 8080,

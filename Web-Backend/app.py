@@ -44,7 +44,7 @@ def create_app():
     os.environ['HF_ENDPOINT'] = app.config['HF_ENDPOINT']
 
     # 4. 初始化CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}}) # 仅对/api路径下的路由启用CORS
+    CORS(app, resources={r"/fake/*": {"origins": "*"},r"/api/*": {"origins": "*"}}) # 仅对/api路径下的路由启用CORS
 
     # 5. 在应用上下文中初始化服务
     with app.app_context():
@@ -84,4 +84,4 @@ app = create_app()
 if __name__ == '__main__':
     # 使用 gunicorn 或 uwsgi 部署时，不会执行这部分
     # 仅用于开发环境
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

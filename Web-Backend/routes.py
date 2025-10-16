@@ -727,8 +727,8 @@ def get_fake_media_handler(fake_id):
             # 查找所有包含fake_id的图片文件，使用更灵活的匹配规则
             for filename in os.listdir(img_dir):
                 if fake_id in filename:
-                    # 构建完整的URL路径，指向Flask应用运行的5000端口
-                    img_url = f"http://localhost:5000/fake/img/{filename}"
+                    # 构建相对路径URL，避免跨域问题
+                    img_url = f"/fake/img/{filename}"
                     media["pictures"].append(img_url)
                     current_app.logger.info(f"找到本地图片文件: {filename}")
         
@@ -737,8 +737,8 @@ def get_fake_media_handler(fake_id):
             # 查找所有包含fake_id的视频文件，使用更灵活的匹配规则
             for filename in os.listdir(video_dir):
                 if fake_id in filename:
-                    # 构建完整的URL路径，指向Flask应用运行的5000端口
-                    video_url = f"http://localhost:5000/fake/video/{filename}"
+                    # 构建相对路径URL，避免跨域问题
+                    video_url = f"/fake/video/{filename}"
                     media["videos"].append(video_url)
                     current_app.logger.info(f"找到本地视频文件: {filename}")
         
