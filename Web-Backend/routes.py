@@ -7,8 +7,7 @@ import json
 from flask import Blueprint, request, jsonify, current_app, make_response, Response, redirect
 from werkzeug.utils import secure_filename
 from datetime import datetime
-#from services import nebula_service, search_service, mongodb_service,neo4j_service
-from services import neo4j_service
+from services import nebula_service, search_service, mongodb_service,neo4j_service
 import utils
 from datetime import datetime
 import random
@@ -209,7 +208,7 @@ def search_video_route():
     if error_response:
         return error_response, status_code
         
-    score = 1
+    score = 0.8
     print(score)
     # try:
     #     top_k = int(top_k_str)
@@ -232,7 +231,18 @@ def search_video_route():
                 data_url = f"data:{video_type};base64,{video_base64}"
                 video_base64_list.append(data_url)
 
-    return jsonify({"message": "视频上传成功", "video_base64_list": video_base64_list})
+    results_event = []
+    if results and isinstance(results, list):
+        for video_path in results:
+            mid = video_path.split("/")[-1].split(".")[0]
+            #去es找事件
+            event = search_service.search_event_by_mid(mid, current_app.config)
+            results_event.append(event)
+
+    # return jsonify({"message": "视频上传成功", "video_base64_list": video_base64_list})
+        # 展平列表
+    results_event = [item for sublist in results_event for item in sublist]
+    return jsonify({"search_results": results_event})
 
 # --- General File Upload API ---
 @api.route('/upload', methods=['POST'])

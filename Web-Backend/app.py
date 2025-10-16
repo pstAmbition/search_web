@@ -6,8 +6,8 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from config import Config
 from routes import api as api_blueprint
-#from services import nebula_service, search_service,mongodb_service,neo4j_service
-from services import neo4j_service
+from services import nebula_service, search_service,mongodb_service,neo4j_service
+# from services import neo4j_service
 from flask.json.provider import DefaultJSONProvider
 
 
@@ -49,9 +49,9 @@ def create_app():
     # 5. 在应用上下文中初始化服务
     with app.app_context():
         # 根据需要启动相应服务
-        #nebula_service.init_nebula_pool(app.config)
-        #search_service.init_search_clients(app.config)
-        #mongodb_service.init_mongodb_pool(app.config)
+        nebula_service.init_nebula_pool(app.config)
+        search_service.init_search_clients(app.config)
+        mongodb_service.init_mongodb_pool(app.config)
         neo4j_service.init_neo4j_pool(app.config)
 
     # 6. 注册Blueprint

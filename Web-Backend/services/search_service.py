@@ -67,7 +67,7 @@ def search_text(query_content, score_threshold, app_config, top_k_first=100, ngr
     search_body = {
         "query": {"match": {"content": query_content}},
         "_source": ["id", "title", "content", "publishtime", "event", "uid", "uname", 
-                    "isrumor", "datasource", "istweet", "isretweet", "retext", "pic_ids", "pic_urls"],
+                    "isrumor", "datasource", "istweet", "isretweet", "retext", "pic_ids", "pic_urls", "vid_ids", "vid_urls"],
         "size": top_k_first
     }
     
@@ -141,7 +141,8 @@ def search_text(query_content, score_threshold, app_config, top_k_first=100, ngr
             final_candidates.extend(sorted_group)
         
         for c in candidates:
-            c["imageUrl"] = c.pop("pic_urls", -1)  # 使用 pop 删除原键并获取其值 重命名       
+            c["imageUrl"] = c.pop("pic_urls", -1)  # 使用 pop 删除原键并获取其值 重命名    
+            c["videoUrl"] = c.pop("vid_urls", -1)  # 使用 pop 删除原键并获取其值 重命名      
 
         return final_candidates
 
@@ -207,7 +208,7 @@ def search_event_by_mid(query_content, app_config, top_k_first=1, ngram_n=3):
     search_body = {
         "query": {"term": {"id": query_content}},
         "_source": ["id", "title", "content", "publishtime", "event", "uid", "uname", 
-                    "isrumor", "datasource", "istweet", "isretweet", "retext", "pic_ids", "pic_urls"],
+                    "isrumor", "datasource", "istweet", "isretweet", "retext", "pic_ids", "pic_urls", "vid_ids", "vid_urls"],
         "size": top_k_first
     }
     
@@ -279,11 +280,12 @@ def search_event_by_mid(query_content, app_config, top_k_first=1, ngram_n=3):
         
         for c in candidates:
             c["imageUrl"] = c.pop("pic_urls", -1)  # 使用 pop 删除原键并获取其值 重命名       
+            c["videoUrl"] = c.pop("vid_urls", -1)  # 使用 pop 删除原键并获取其值 重命名   
 
         return final_candidates
 
     except Exception as e:
-        logger.error(f"图片搜索出错: {e}")
+        logger.error(f"搜索出错: {e}")
         return {"error": str(e)}
 
 # --- 视频搜索逻辑 ---

@@ -12,7 +12,7 @@ import FakeKnowledgeDetail from '../views/fake-know/FakeKnowledgeDetail.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/fake'
+    redirect: '/trace'
   },
   {
     path: '/trace',
