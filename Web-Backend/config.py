@@ -36,8 +36,6 @@ class Config:
     NEO4J_USER = 'neo4j'
     NEO4J_PASSWORD =  'password'
     # 静态文件目录配置（使用原始字符串避免转义问题）
-    fake_video_dir = r'/data/data/web/search_web/Web-Backend/fake/video'
-    fake_img_dir = r'/data/data/web/search_web/Web-Backend/fake/img'
     fake_video_dir = r'/data/data/web/video'
     fake_img_dir = r'/data/data/web/picture'
     # Milvus 配置
