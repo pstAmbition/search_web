@@ -140,6 +140,9 @@ export default {
       
       // 获取统计数据
       await this.fetchStats()
+      
+      // 在获取完所有数据后保存缓存
+      this.saveAllDataToCache()
     }
     
     // 检查URL中是否有搜索参数
@@ -180,6 +183,21 @@ export default {
       } catch (error) {
         console.error('保存缓存失败:', error);
       }
+    },
+    
+    // 保存所有数据到缓存
+    saveAllDataToCache() {
+      const cacheData = {
+        allNews: this.allNews,
+        filteredNews: this.filteredNews,
+        totalDatabaseFakes: this.totalDatabaseFakes,
+        entityCount: this.entityCount,
+        relationCount: this.relationCount,
+        infoModalCount: this.infoModalCount,
+        fakeNewsCategoryCount: this.fakeNewsCategoryCount
+      };
+      this.setCachedData(cacheData);
+      console.log('所有数据已保存到缓存');
     },
     
     // 获取统计数据
@@ -285,18 +303,6 @@ export default {
               console.log('处理后的INFO节点列表:', infoNodes);
               this.allNews = infoNodes;
               this.filteredNews = infoNodes;
-              
-              // 保存数据到缓存
-              this.setCachedData({
-                allNews: infoNodes,
-                filteredNews: infoNodes,
-                totalDatabaseFakes: actualData.length,
-                entityCount: this.entityCount,
-                relationCount: this.relationCount,
-                infoModalCount: this.infoModalCount,
-                fakeNewsCategoryCount: this.fakeNewsCategoryCount
-              });
-              console.log('虚假信息数据已保存到缓存');
               
               return; // 成功获取数据后返回
             } else {
