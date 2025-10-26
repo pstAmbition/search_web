@@ -300,6 +300,9 @@ export default {
                   }
                 });
               
+              // 按influence_score属性从高到低排序
+              infoNodes.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
+              
               console.log('处理后的INFO节点列表:', infoNodes);
               this.allNews = infoNodes;
               this.filteredNews = infoNodes;
@@ -440,6 +443,9 @@ export default {
             });
           }
           
+          // 按influence_score属性从高到低排序
+          infoNodes.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
+          
           console.log('处理后的INFO节点列表:', infoNodes);
           this.filteredNews = infoNodes;
         } catch (error) {
@@ -514,6 +520,7 @@ export default {
           console.log('API返回空结果，尝试本地搜索作为补充')
           this.localSearch()
         } else {
+          // 确保结果已按influence_score排序
           this.filteredNews = apiResults
           this.hasSearched = true
         }
@@ -540,6 +547,9 @@ export default {
           (news.keywords && news.keywords.some(kw => kw.toLowerCase().includes(query)))
         )
       }
+      
+      // 按influence_score属性从高到低排序本地搜索结果
+      results.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
       
       this.filteredNews = results
       this.hasSearched = true

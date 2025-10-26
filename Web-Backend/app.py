@@ -7,7 +7,7 @@ from flask_cors import CORS
 from config import Config
 from routes import api as api_blueprint
 from services import nebula_service, search_service,mongodb_service,neo4j_service
-# from services import neo4j_service
+#from services import neo4j_service
 from flask.json.provider import DefaultJSONProvider
 
 
@@ -85,3 +85,4 @@ if __name__ == '__main__':
     # 使用 gunicorn 或 uwsgi 部署时，不会执行这部分
     # 仅用于开发环境
     app.run(host='0.0.0.0', port=5000, debug=True)
+    #app.run(host='127.0.0.1', port=5000, debug=True)

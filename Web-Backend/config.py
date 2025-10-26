@@ -33,6 +33,8 @@ class Config:
     # Neo4j 配置
     NEO4J_HOST =  '172.18.112.199'
     NEO4J_PORT =  7688
+    #NEO4J_HOST =  '127.0.0.1'
+    #NEO4J_PORT =  7687
     NEO4J_USER = 'neo4j'
     NEO4J_PASSWORD =  'password'
     # 静态文件目录配置（使用原始字符串避免转义问题）

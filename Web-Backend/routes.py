@@ -8,6 +8,7 @@ from flask import Blueprint, request, jsonify, current_app, make_response, Respo
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from services import nebula_service, search_service, mongodb_service,neo4j_service
+#from services import neo4j_service
 import utils
 from datetime import datetime
 import random
@@ -691,6 +692,10 @@ def search_fake_knowledge_handler():
                 (info.get('info_class') and keyword.lower() in info['info_class'].lower())
             ):
                 search_results.append(info)
+        
+        # 按influence_score属性从高到低排序搜索结果
+        # 使用lambda函数确保只对有influence_score属性的项进行排序，并将其转换为数字进行比较
+        search_results.sort(key=lambda x: float(x.get('influence_score', 0)), reverse=True)
         
         current_app.logger.info(f"搜索虚假信息成功，关键词: {keyword}，找到 {len(search_results)} 条结果")
         return jsonify({
