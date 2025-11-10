@@ -531,17 +531,27 @@ def get_dashboard_metrics():
             
             # 增加超时时间到30秒，确保有足够时间完成查询
             platform_results = list(mongo_collection_obj.aggregate(pipeline, maxTimeMS=30000))
-            
+            platform_results = list(mongo_collection_obj.aggregate(pipeline, maxTimeMS=30000))
+
             # 处理结果
             platform_counts = {}
             unique_platforms = []
-            
+
             for result in platform_results:
                 platform = result['_id']
                 count = result['count']
-                platform_counts[platform] = count
-                unique_platforms.append(platform)
-            
+                
+                # 如果平台包含"微博"，则统一归类为"微博"
+                if '微博' in platform:
+                    platform = '微博'
+                
+                # 统计计数
+                if platform in platform_counts:
+                    platform_counts[platform] += count
+                else:
+                    platform_counts[platform] = count
+                    unique_platforms.append(platform)
+
             metrics['platforms'] = unique_platforms
             metrics['platform_count'] = len(unique_platforms)
             metrics['platform_counts'] = platform_counts
