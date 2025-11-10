@@ -8,6 +8,7 @@ from flask import Blueprint, request, jsonify, current_app, make_response, Respo
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from services import nebula_service, search_service, mongodb_service,neo4j_service
+#from services import neo4j_service
 import utils
 from datetime import datetime
 import random
@@ -692,6 +693,10 @@ def search_fake_knowledge_handler():
             ):
                 search_results.append(info)
         
+        # 按influence_score属性从高到低排序搜索结果
+        # 使用lambda函数确保只对有influence_score属性的项进行排序，并将其转换为数字进行比较
+        search_results.sort(key=lambda x: float(x.get('influence_score', 0)), reverse=True)
+        
         current_app.logger.info(f"搜索虚假信息成功，关键词: {keyword}，找到 {len(search_results)} 条结果")
         return jsonify({
             "success": True,
@@ -727,8 +732,8 @@ def get_fake_media_handler(fake_id):
             # 查找所有包含fake_id的图片文件，使用更灵活的匹配规则
             for filename in os.listdir(img_dir):
                 if fake_id in filename:
-                    # 构建完整的URL路径，指向Flask应用运行的5000端口
-                    img_url = f"http://localhost:5000/fake/img/{filename}"
+                    # 构建相对路径URL，避免跨域问题
+                    img_url = f"/fake/img/{filename}"
                     media["pictures"].append(img_url)
                     current_app.logger.info(f"找到本地图片文件: {filename}")
         
@@ -737,8 +742,8 @@ def get_fake_media_handler(fake_id):
             # 查找所有包含fake_id的视频文件，使用更灵活的匹配规则
             for filename in os.listdir(video_dir):
                 if fake_id in filename:
-                    # 构建完整的URL路径，指向Flask应用运行的5000端口
-                    video_url = f"http://localhost:5000/fake/video/{filename}"
+                    # 构建相对路径URL，避免跨域问题
+                    video_url = f"/fake/video/{filename}"
                     media["videos"].append(video_url)
                     current_app.logger.info(f"找到本地视频文件: {filename}")
         

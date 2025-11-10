@@ -121,11 +121,29 @@ export default {
     }
   },
   async mounted() {
-    // 获取虚假信息数据
-    await this.fetchAllFakeNews()
-    
-    // 获取统计数据
-    await this.fetchStats()
+    // 检查是否有缓存数据
+    const cachedData = this.getCachedData();
+    if (cachedData) {
+      console.log('使用缓存的虚假信息数据');
+      this.allNews = cachedData.allNews || [];
+      this.filteredNews = cachedData.filteredNews || [];
+      this.totalDatabaseFakes = cachedData.totalDatabaseFakes || 0;
+      this.entityCount = cachedData.entityCount || 0;
+      this.relationCount = cachedData.relationCount || 0;
+      this.infoModalCount = cachedData.infoModalCount || 0;
+      this.fakeNewsCategoryCount = cachedData.fakeNewsCategoryCount || 0;
+      this.loading = false;
+      this.statsLoaded = true;
+    } else {
+      // 获取虚假信息数据
+      await this.fetchAllFakeNews()
+      
+      // 获取统计数据
+      await this.fetchStats()
+      
+      // 在获取完所有数据后保存缓存
+      this.saveAllDataToCache()
+    }
     
     // 检查URL中是否有搜索参数
     const searchQuery = this.$route.query.search
@@ -135,6 +153,53 @@ export default {
     }
   },
   methods: {
+    // 缓存相关方法
+    getCachedData() {
+      const CACHE_KEY = 'fake_news_cache';
+      const CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
+      
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!cached) return null;
+        
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          return data;
+        }
+      } catch (error) {
+        console.error('读取缓存失败:', error);
+      }
+      return null;
+    },
+    
+    setCachedData(data) {
+      const CACHE_KEY = 'fake_news_cache';
+      try {
+        const cacheData = {
+          timestamp: Date.now(),
+          data: data
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      } catch (error) {
+        console.error('保存缓存失败:', error);
+      }
+    },
+    
+    // 保存所有数据到缓存
+    saveAllDataToCache() {
+      const cacheData = {
+        allNews: this.allNews,
+        filteredNews: this.filteredNews,
+        totalDatabaseFakes: this.totalDatabaseFakes,
+        entityCount: this.entityCount,
+        relationCount: this.relationCount,
+        infoModalCount: this.infoModalCount,
+        fakeNewsCategoryCount: this.fakeNewsCategoryCount
+      };
+      this.setCachedData(cacheData);
+      console.log('所有数据已保存到缓存');
+    },
+    
     // 获取统计数据
       async fetchStats() {
         try {
@@ -235,9 +300,13 @@ export default {
                   }
                 });
               
+              // 按influence_score属性从高到低排序
+              infoNodes.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
+              
               console.log('处理后的INFO节点列表:', infoNodes);
               this.allNews = infoNodes;
               this.filteredNews = infoNodes;
+              
               return; // 成功获取数据后返回
             } else {
               console.warn('API返回数据为空或格式不正确');
@@ -374,6 +443,9 @@ export default {
             });
           }
           
+          // 按influence_score属性从高到低排序
+          infoNodes.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
+          
           console.log('处理后的INFO节点列表:', infoNodes);
           this.filteredNews = infoNodes;
         } catch (error) {
@@ -448,6 +520,7 @@ export default {
           console.log('API返回空结果，尝试本地搜索作为补充')
           this.localSearch()
         } else {
+          // 确保结果已按influence_score排序
           this.filteredNews = apiResults
           this.hasSearched = true
         }
@@ -474,6 +547,9 @@ export default {
           (news.keywords && news.keywords.some(kw => kw.toLowerCase().includes(query)))
         )
       }
+      
+      // 按influence_score属性从高到低排序本地搜索结果
+      results.sort((a, b) => parseFloat(b.influence_score || 0) - parseFloat(a.influence_score || 0));
       
       this.filteredNews = results
       this.hasSearched = true

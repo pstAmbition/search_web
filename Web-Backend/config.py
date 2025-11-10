@@ -31,11 +31,15 @@ class Config:
     NEBULA_POOL_SIZE = 10
     
     # Neo4j 配置
-    NEO4J_HOST = os.environ.get('NEO4J_HOST', '172.18.112.199')
-    NEO4J_PORT = int(os.environ.get('NEO4J_PORT', 7688))
-    NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
-    NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'password')
-
+    NEO4J_HOST =  '172.18.112.199'
+    NEO4J_PORT =  7688
+    #NEO4J_HOST =  '127.0.0.1'
+    #NEO4J_PORT =  7687
+    NEO4J_USER = 'neo4j'
+    NEO4J_PASSWORD =  'password'
+    # 静态文件目录配置（使用原始字符串避免转义问题）
+    fake_video_dir = r'/data/data/web/video'
+    fake_img_dir = r'/data/data/web/picture'
     # Milvus 配置
     MILVUS_URI = "http://172.18.112.199:31800"
     MILVUS_TOKEN = "root:Milvus" # 示例token，请按需修改

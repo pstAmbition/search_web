@@ -12,6 +12,9 @@ module.exports = {
           '^/api': '/api'
         },
         // 添加更多的代理配置以确保请求正确转发
+        headers: {
+          Connection: 'keep-alive'
+        },
         onProxyReq: function(proxyReq, req, res) {
           console.log('Proxying request:', req.method, req.url);
         },
@@ -19,18 +22,22 @@ module.exports = {
           console.log('Proxy response status:', proxyRes.statusCode, 'for', req.url);
         }
       },
-      '/uploads': {
+      '/fake': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        ws: true,
         secure: false,
         pathRewrite: {
-          '^/uploads': '/uploads'
+          '^/fake': '/fake'
+        },
+        headers: {
+          Connection: 'keep-alive'
         },
         onProxyReq: function(proxyReq, req, res) {
-          console.log('Proxying uploads request:', req.method, req.url);
+          console.log('Proxying fake request:', req.method, req.url);
         },
         onProxyRes: function(proxyRes, req, res) {
-          console.log('Proxy uploads response status:', proxyRes.statusCode, 'for', req.url);
+          console.log('Proxy fake response status:', proxyRes.statusCode, 'for', req.url);
         }
       }
     },
